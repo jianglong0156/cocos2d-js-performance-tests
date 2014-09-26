@@ -1,4 +1,4 @@
-#cocos2d-js-performance-tests#
+cocos2d-js-performance-tests
 ============================
 
 ##Render test##

@@ -1,4 +1,4 @@
-#Render test#
+Render test
 ============================
 
 ##The test environment##
