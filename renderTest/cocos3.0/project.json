@@ -11,6 +11,8 @@
     "jsList" : [
         "src/resource.js",
         "src/myApp.js",
-        "src/myApp2.js"
+        "src/myApp2.js",
+        "src/index-phone.js",
+        "src/update-phone.js"
     ]
 }

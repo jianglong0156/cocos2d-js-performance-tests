@@ -5,7 +5,7 @@ Render test
 
 ###Canvas###
 
-Canvas size: 2000x2000
+Canvas size: 2000x2000(Desktop) / 480x720(Mobile)
 
 Canvas color: black
 
@@ -25,13 +25,25 @@ Clipping texture.
 
 ###Test Levels###
 
+Desktop:
+
 1. 200 sprites
 2. 450 sprites
 3. 800 sprites
-4. 1250 sprites (only desktop)
-5. 1800 sprites (only desktop)
-6. 2450 sprites (only desktop)
-7. 3200 sprites (only desktop)
+4. 1250 sprites
+5. 1800 sprites
+6. 2450 sprites
+7. 3200 sprites
+
+Mobile: 
+
+1. 50 sprites
+2. 100 sprites
+3. 150 sprites
+4. 200 sprites
+5. 250 sprites
+6. 300 sprites
+7. 400 sprites
 
 ###Static sprite###
 
