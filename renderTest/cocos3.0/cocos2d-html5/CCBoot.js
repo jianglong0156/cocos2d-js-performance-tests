@@ -2064,6 +2064,36 @@ cc.game = /** @lends cc.game# */{
         if (document["ccConfig"]) {
             self.config = _init(document["ccConfig"]);
         } else {
+
+
+//// Ibon
+                var QueryString = function () {
+                      // This function is anonymous, is executed immediately and
+                      // the return value is assigned to QueryString!
+                      var query_string = {};
+                      var query = window.location.search.substring(1);
+                      var vars = query.split("&");
+                      for (var i=0;i<vars.length;i++) {
+                        var pair = vars[i].split("=");
+                            // If first entry with this name
+                        if (typeof query_string[pair[0]] === "undefined") {
+                          query_string[pair[0]] = pair[1];
+                            // If second entry with this name
+                        } else if (typeof query_string[pair[0]] === "string") {
+                          var arr = [ query_string[pair[0]], pair[1] ];
+                          query_string[pair[0]] = arr;
+                            // If third or later entry with this name
+                        } else {
+                          query_string[pair[0]].push(pair[1]);
+                        }
+                      }
+                        return query_string;
+                    } ();
+
+                var file = typeof QueryString.webgl !== "undefined" ? "projectwebgl.json" : "project.json"
+//// End Ibon
+
+
             try {
                 var cocos_script = document.getElementsByTagName('script');
                 for(var i=0;i<cocos_script.length;i++){
@@ -2071,22 +2101,23 @@ cc.game = /** @lends cc.game# */{
                     if(_t == '' || _t){break;}
                 }
                 var _src, txt, _resPath;
+
                 if(i < cocos_script.length){
                     _src = cocos_script[i].src;
                     if(_src){
                         _resPath = /(.*)\//.exec(_src)[0];
                         cc.loader.resPath = _resPath;
-                        _src = cc.path.join(_resPath, 'project.json');
+                        _src = cc.path.join(_resPath, file);
                     }
                     txt = cc.loader._loadTxtSync(_src);
                 }
                 if(!txt){
-                    txt = cc.loader._loadTxtSync("project.json");
+                    txt = cc.loader._loadTxtSync(file);
                 }
                 var data = JSON.parse(txt);
                 self.config = _init(data || {});
             } catch (e) {
-                cc.log("Failed to read or parse project.json");
+                cc.log("Failed to read or parse "+file);
                 self.config = _init({});
             }
         }

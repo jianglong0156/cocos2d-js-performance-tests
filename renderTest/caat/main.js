@@ -1,13 +1,5 @@
 (function() {
-    var W = 2000;
 
-    var H = 2000;
-
-    var img = new Image();
-    img.onload = function () {
-        run();
-    };
-    img.src = "anim1.png";
 
     var QueryString = function () {
       // This function is anonymous, is executed immediately and
@@ -32,6 +24,24 @@
         return query_string;
     } ();
 
+    var W;
+    var H;
+
+    if ( typeof QueryString.phone!=="undefined" || typeof QueryString.phonesize!=="undefined" ) {
+        W=480;
+        H=720;
+    } else {
+        W=2000;
+        H=2000;
+    }
+
+    var img = new Image();
+    img.onload = function () {
+        run();
+    };
+    img.src = "anim1.png";
+
+
     function run() {
         var renderer;
         if ( typeof QueryString.webgl !== "undefined") {
@@ -55,7 +65,9 @@
                 {a: 10, b: 25}, //250
                 {a: 10, b: 30}, //300
                 {a: 10, b: 35}, //350
-                {a: 10, b: 40} //400
+                {a: 10, b: 40}, //400
+                {a: 30, b: 60}, //1800
+                {a: 40, b: 80} //3200
             ];
         } else {
             TestScene = [

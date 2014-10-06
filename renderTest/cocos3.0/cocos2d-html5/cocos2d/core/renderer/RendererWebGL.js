@@ -22,6 +22,7 @@
  THE SOFTWARE.
  ****************************************************************************/
 
+
 if(cc._renderType === cc._RENDER_TYPE_WEBGL){
     cc.rendererWebGL = {
         childrenOrderDirty: true,
@@ -36,6 +37,7 @@ if(cc._renderType === cc._RENDER_TYPE_WEBGL){
          * @param {WebGLRenderingContext} [ctx=cc._renderContext]
          */
         rendering: function (ctx) {
+            fpsNum++;
             var locCmds = this._renderCmds,
                 i,
                 len;

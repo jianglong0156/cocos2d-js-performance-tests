@@ -22,12 +22,6 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-var fpsNum = 0;
-var fpsElem = document.getElementById("fps");
-setInterval(function(){
-    fpsElem && (fpsElem.innerHTML = fpsNum);
-    fpsNum = 0;
-}, 1000);
 
 if (cc._renderType === cc._RENDER_TYPE_CANVAS) {
     cc.rendererCanvas = {

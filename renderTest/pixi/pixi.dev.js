@@ -4449,7 +4449,12 @@ PIXI.autoDetectRenderer = function(width, height, view, transparent, antialias)
     if(!height)height = 600;
 
     // BORROWED from Mr Doob (mrdoob.com)
-    var webgl = false;
+
+
+
+
+
+    var webgl = typeof QueryString.webgl !== "undefined";
 //    ( function () { try {
 //            var canvas = document.createElement( 'canvas' );
 //            return !! window.WebGLRenderingContext && ( canvas.getContext( 'webgl' ) || canvas.getContext( 'experimental-webgl' ) );
