@@ -1,0 +1,90 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>CAAT-GunSmoke example 1</title>
+    <meta name="viewport"
+          content="width=device-width,initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no,target-densitydpi=device-dpi"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+
+    <meta name="full-screen" content="true"/>
+    <meta name="screen-orientation" content="portrait"/>
+    <meta name="x5-fullscreen" content="true"/>
+    <meta name="360-fullscreen" content="true"/>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000000;
+        }
+    </style>
+
+</head>
+<body>
+<style>
+    #fps {
+        color: #fff;
+        z-index: 9999;
+        font-size: 26px;
+        position: absolute;
+    }
+
+    #info {
+        color: #fff;
+        z-index: 9999;
+        font-size: 26px;
+        position: absolute;
+        left: 90px;
+    }
+
+    .btn {
+        height: 30px;
+        position: absolute;
+        z-index: 9999;
+        left: 0;
+        font-size: 20px;
+    }
+
+    #addition {
+        top: 40px;
+        width: 30px;
+    }
+
+    #subtraction {
+        top: 80px;
+        width: 30px;
+    }
+
+    #rotate {
+        top: 120px;
+        width: 130px;
+    }
+
+    #move {
+        top: 160px;
+        width: 130px;
+    }
+
+    #scale {
+        top: 200px;
+        width: 130px;
+    }
+
+    #all {
+        top: 240px;
+        width: 130px;
+    }
+</style>
+<div id="fps">000</div>
+<div id="info">Unknown</div>
+<button class="btn" id="addition">+</button>
+<button class="btn" id="subtraction">-</button>
+<button class="btn" id="rotate">rotate</button>
+<button class="btn" id="move">move</button>
+<button class="btn" id="scale">scale</button>
+<button class="btn" id="all">all</button>
+<script src="all.min.js"></script>
+<script src="main.js"></script>
+
+
+</body>
+</html>

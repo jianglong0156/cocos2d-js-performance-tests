@@ -72,3 +72,9 @@ The ScaleX will be enlarged to 2.
 |impact|1.23|
 |phaser|2.1.1|
 |pixi|1.6.0|
+|CAAT|2.0|
+
+##TODO##
+
+Change FPS counter. The FPS should accumulate fps for a period of time (500ms) and show the avg FPS during that period. 
+This will dilute spikes' distortion. Change setInterval in favor of RAF.

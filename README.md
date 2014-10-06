@@ -14,3 +14,4 @@ The test engine:
 3. impact 1.23
 4. phaser 2.1.1
 5. pixi 1.6.0
+6. CAAT 2.0
