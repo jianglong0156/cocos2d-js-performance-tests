@@ -65,9 +65,11 @@ egret_h5.startGame = function () {
     //WebGL是egret的Beta特性，默认关闭
     var useWebGL= typeof QueryString.webgl!=="undefined";
     if( useWebGL && egret.WebGLUtils.checkCanUseWebGL()) {
+        alert("webgl");
         context.rendererContext = new egret.WebGLRenderer(canvas);
     }
     else {
+        alert("canvas");
         context.rendererContext = new egret.HTML5CanvasRenderer(canvas);
     }
 
