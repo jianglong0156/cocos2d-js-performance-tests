@@ -166,8 +166,13 @@
                 var fish = new GS.Actor();
                 fish.setSpriteImageData(si.getImageDataByIndex(0), true);
 
-                fish.x = (i % a) * 50 + 25;
-                fish.y = (i / a | 0) * 25 + 13;
+                if ( typeof QueryString.phone!=="undefined" ) {
+                    fish.x = (i % a) * 30 + 25;
+                    fish.y = (i / a | 0) * 13 + 13;
+                } else {
+                    fish.x = (i % a) * 50 + 25;
+                    fish.y = (i / a | 0) * 25 + 13;
+                }
                 scene.addActor(fish);
                 fishList.push(fish);
             }
