@@ -39,11 +39,37 @@ egret_h5.startGame = function () {
     var scaleMode =  /*egret.MainContext.deviceType == egret.MainContext.DEVICE_MOBILE ? egret.StageScaleMode.SHOW_ALL : */egret.StageScaleMode.NO_SCALE;
     context.stage.scaleMode = scaleMode;
 
+    window.QueryString = function () {
+                  // This function is anonymous, is executed immediately and
+                  // the return value is assigned to QueryString!
+                  var query_string = {};
+                  var query = window.location.search.substring(1);
+                  var vars = query.split("&");
+                  for (var i=0;i<vars.length;i++) {
+                    var pair = vars[i].split("=");
+                        // If first entry with this name
+                    if (typeof query_string[pair[0]] === "undefined") {
+                      query_string[pair[0]] = pair[1];
+                        // If second entry with this name
+                    } else if (typeof query_string[pair[0]] === "string") {
+                      var arr = [ query_string[pair[0]], pair[1] ];
+                      query_string[pair[0]] = arr;
+                        // If third or later entry with this name
+                    } else {
+                      query_string[pair[0]].push(pair[1]);
+                    }
+                  }
+                    return query_string;
+                } ();
+
     //WebGL是egret的Beta特性，默认关闭
-    if(false){// egret.WebGLUtils.checkCanUseWebGL()) {
+    var useWebGL= typeof QueryString.webgl!=="undefined";
+    if( useWebGL && egret.WebGLUtils.checkCanUseWebGL()) {
+        alert("webgl");
         context.rendererContext = new egret.WebGLRenderer(canvas);
     }
     else {
+        alert("canvas");
         context.rendererContext = new egret.HTML5CanvasRenderer(canvas);
     }
 
