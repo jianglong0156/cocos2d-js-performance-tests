@@ -24,7 +24,6 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 cc.g_NumberOfDraws = 0;
 
 cc.GLToClipTransform = function (transformOut) {
