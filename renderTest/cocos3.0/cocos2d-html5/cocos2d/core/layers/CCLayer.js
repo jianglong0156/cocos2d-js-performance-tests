@@ -177,7 +177,6 @@ if (cc._renderType === cc._RENDER_TYPE_CANVAS) {
         //the bakeSprite is drawing
         locBakeSprite.visit(context);
 
-        _t.arrivalOrder = 0;
         context.restore();
     };
 
@@ -402,11 +401,9 @@ if (cc._renderType === cc._RENDER_TYPE_CANVAS) {
     };
     _p._setWidth = function(width){
         cc.Node.prototype._setWidth.call(this, width);
-        this._rendererCmd._drawingRect.width = width;
     };
     _p._setHeight = function(height){
         cc.Node.prototype._setHeight.call(this, height);
-        this._rendererCmd._drawingRect.height = height;
     };
     _p._updateColor = function () {
         var locCmd = this._rendererCmd;
@@ -481,12 +478,14 @@ if (cc._renderType === cc._RENDER_TYPE_CANVAS) {
                     else
                         break;
                 }
-                _t.draw(bakeContext);
+                if(_t._rendererCmd)
+                    cc.renderer.pushRenderCommand(_t._rendererCmd);
                 for (; i < len; i++) {
                     children[i].visit(bakeContext);
                 }
             } else
-                _t.draw(bakeContext);
+                if(_t._rendererCmd)
+                    cc.renderer.pushRenderCommand(_t._rendererCmd);
             cc.view._resetScale();
             this._cacheDirty = false;
         }
@@ -494,7 +493,6 @@ if (cc._renderType === cc._RENDER_TYPE_CANVAS) {
         //the bakeSprite is drawing
         locBakeSprite.visit(context);
 
-        _t.arrivalOrder = 0;
         context.restore();
     };
 

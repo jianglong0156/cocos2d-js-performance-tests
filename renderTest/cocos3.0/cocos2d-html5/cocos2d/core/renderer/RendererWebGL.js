@@ -22,22 +22,20 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-
 if(cc._renderType === cc._RENDER_TYPE_WEBGL){
     cc.rendererWebGL = {
         childrenOrderDirty: true,
         _transformNodePool: [],                              //save nodes transform dirty
         _renderCmds: [],                                     //save renderer commands
 
-        _isCacheToCanvasOn: false,                          //a switch that whether cache the rendererCmd to cacheToCanvasCmds
-        _cacheToCanvasCmds: [],                              // an array saves the renderer commands need for cache to other canvas
+        _isCacheToBufferOn: false,                          //a switch that whether cache the rendererCmd to cacheToCanvasCmds
+        _cacheToBufferCmds: [],                              // an array saves the renderer commands need for cache to other canvas
 
         /**
          * drawing all renderer command to context (default is cc._renderContext)
          * @param {WebGLRenderingContext} [ctx=cc._renderContext]
          */
         rendering: function (ctx) {
-            fpsNum++;
             var locCmds = this._renderCmds,
                 i,
                 len;
@@ -45,6 +43,21 @@ if(cc._renderType === cc._RENDER_TYPE_WEBGL){
             for (i = 0, len = locCmds.length; i < len; i++) {
                 locCmds[i].rendering(context);
             }
+        },
+
+        /**
+         * drawing all renderer command to cache canvas' context
+         * @param {CanvasRenderingContext2D} ctx
+         */
+        _renderingToBuffer: function (ctx) {
+            var locCmds = this._cacheToBufferCmds, i, len;
+            ctx = ctx || cc._renderContext;
+            for (i = 0, len = locCmds.length; i < len; i++) {
+                locCmds[i].rendering(ctx);
+            }
+
+            locCmds.length = 0;
+            this._isCacheToBufferOn = false;
         },
 
         //reset renderer's flag
@@ -58,10 +71,9 @@ if(cc._renderType === cc._RENDER_TYPE_WEBGL){
             var locPool = this._transformNodePool;
             //sort the pool
             locPool.sort(this._sortNodeByLevelAsc);
-
             //transform node
             for (var i = 0, len = locPool.length; i < len; i++) {
-                if (locPool[i]._renderCmdDiry)        //TODO need modify name for LabelTTF
+                if (locPool[i]._renderCmdDiry)
                     locPool[i]._transformForRenderer();
             }
             locPool.length = 0;
@@ -85,9 +97,9 @@ if(cc._renderType === cc._RENDER_TYPE_WEBGL){
         },
 
         pushRenderCommand: function (cmd) {
-            if (this._isCacheToCanvasOn) {
-                if (this._cacheToCanvasCmds.indexOf(cmd) === -1)
-                    this._cacheToCanvasCmds.push(cmd);
+            if (this._isCacheToBufferOn) {
+                if (this._cacheToBufferCmds.indexOf(cmd) === -1)
+                    this._cacheToBufferCmds.push(cmd);
             } else {
                 if (this._renderCmds.indexOf(cmd) === -1)
                     this._renderCmds.push(cmd);
@@ -185,22 +197,23 @@ if(cc._renderType === cc._RENDER_TYPE_WEBGL){
         var _t = this._node;
         cc.glBlendFunc(_t._blendFunc.src, _t._blendFunc.dst);
         _t._shaderProgram.use();
-        _t._shaderProgram.setUniformsForBuiltins();
+        _t._shaderProgram._setUniformForMVPMatrixWithMat4(_t._stackMatrix);
         _t._render();
     };
 
-    cc.MontionStreakCmdWebGL = function(node){
+    cc.MotionStreakCmdWebGL = function(node){
         this._node = node;
     };
 
-    cc.MontionStreakCmdWebGL.prototype.rendering = function(ctx){
+    cc.MotionStreakCmdWebGL.prototype.rendering = function(ctx){
         var _t = this._node;
         if (_t._nuPoints <= 1)
             return;
 
         if(_t.texture && _t.texture.isLoaded()){
             ctx = ctx || cc._renderContext;
-            cc.nodeDrawSetup(_t);
+            _t._shaderProgram.use();
+            _t._shaderProgram._setUniformForMVPMatrixWithMat4(_t._stackMatrix);
             cc.glEnableVertexAttribs(cc.VERTEX_ATTRIB_FLAG_POS_COLOR_TEX);
             cc.glBlendFunc(_t._blendFunc.src, _t._blendFunc.dst);
 
@@ -329,7 +342,7 @@ if(cc._renderType === cc._RENDER_TYPE_WEBGL){
         if (node.autoDraw) {
             node.begin();
 
-            var locClearFlags = this.clearFlags;
+            var locClearFlags = node.clearFlags;
             if (locClearFlags) {
                 var oldClearColor = [0.0, 0.0, 0.0, 0.0];
                 var oldDepthClearValue = 0.0;
@@ -428,4 +441,205 @@ if(cc._renderType === cc._RENDER_TYPE_WEBGL){
     };
 
     cc.TMXLayerRenderCmdWebGL.prototype.rendering = cc.SpriteBatchNodeRenderCmdWebGL.prototype.rendering;
+
+    cc.PhysicsDebugNodeRenderCmdWebGL = function(node){
+        this._node = node;
+    };
+
+    cc.PhysicsDebugNodeRenderCmdWebGL.prototype.rendering = function(ctx){
+        var node = this._node;
+        if (!node._space)
+            return;
+
+        node._space.eachShape(cc.DrawShape.bind(node));
+        node._space.eachConstraint(cc.DrawConstraint.bind(node));
+        cc.DrawNode.prototype.draw.call(node);
+        node.clear();
+    };
+
+    cc.SkeletonRenderCmdWebGL = function(node){
+        this._node = node;
+    };
+
+    cc.SkeletonRenderCmdWebGL.prototype.rendering = function(ctx){
+        var node = this._node;
+        node._shaderProgram.use();
+        node._shaderProgram._setUniformForMVPMatrixWithMat4(node._stackMatrix);
+//        cc.glBlendFunc(this._blendFunc.src, this._blendFunc.dst);
+        var color = node.getColor(), locSkeleton = node._skeleton;
+        locSkeleton.r = color.r / 255;
+        locSkeleton.g = color.g / 255;
+        locSkeleton.b = color.b / 255;
+        locSkeleton.a = node.getOpacity() / 255;
+        if (node._premultipliedAlpha) {
+            locSkeleton.r *= locSkeleton.a;
+            locSkeleton.g *= locSkeleton.a;
+            locSkeleton.b *= locSkeleton.a;
+        }
+
+        var additive,textureAtlas,attachment,slot, i, n,
+            quad = new cc.V3F_C4B_T2F_Quad();
+        var locBlendFunc = node._blendFunc;
+
+        for (i = 0, n = locSkeleton.slots.length; i < n; i++) {
+            slot = locSkeleton.drawOrder[i];
+            if (!slot.attachment || slot.attachment.type != sp.ATTACHMENT_TYPE.REGION)
+                continue;
+            attachment = slot.attachment;
+            var regionTextureAtlas = node.getTextureAtlas(attachment);
+
+            if (slot.data.additiveBlending != additive) {
+                if (textureAtlas) {
+                    textureAtlas.drawQuads();
+                    textureAtlas.removeAllQuads();
+                }
+                additive = !additive;
+                cc.glBlendFunc(locBlendFunc.src, additive ? cc.ONE : locBlendFunc.dst);
+            } else if (regionTextureAtlas != textureAtlas && textureAtlas) {
+                textureAtlas.drawQuads();
+                textureAtlas.removeAllQuads();
+            }
+            textureAtlas = regionTextureAtlas;
+
+            var quadCount = textureAtlas.getTotalQuads();
+            if (textureAtlas.getCapacity() == quadCount) {
+                textureAtlas.drawQuads();
+                textureAtlas.removeAllQuads();
+                if (!textureAtlas.resizeCapacity(textureAtlas.getCapacity() * 2))
+                    return;
+            }
+
+            sp._regionAttachment_updateQuad(attachment, slot, quad, node._premultipliedAlpha);
+            textureAtlas.updateQuad(quad, quadCount);
+        }
+
+        if (textureAtlas) {
+            textureAtlas.drawQuads();
+            textureAtlas.removeAllQuads();
+        }
+
+        if(node._debugBones || node._debugSlots){
+
+            cc.kmGLMatrixMode(cc.KM_GL_MODELVIEW);
+            //cc.kmGLPushMatrixWitMat4(node._stackMatrix);
+            cc.current_stack.stack.push(cc.current_stack.top);
+            cc.current_stack.top = node._stackMatrix;
+
+            var drawingUtil = cc._drawingUtil;
+
+            if (node._debugSlots) {
+                // Slots.
+                drawingUtil.setDrawColor(0, 0, 255, 255);
+                drawingUtil.setLineWidth(1);
+
+                for (i = 0, n = locSkeleton.slots.length; i < n; i++) {
+                    slot = locSkeleton.drawOrder[i];
+                    if (!slot.attachment || slot.attachment.type != sp.ATTACHMENT_TYPE.REGION)
+                        continue;
+                    attachment = slot.attachment;
+                    quad = new cc.V3F_C4B_T2F_Quad();
+                    sp._regionAttachment_updateQuad(attachment, slot, quad);
+
+                    var points = [];
+                    points.push(cc.p(quad.bl.vertices.x, quad.bl.vertices.y));
+                    points.push(cc.p(quad.br.vertices.x, quad.br.vertices.y));
+                    points.push(cc.p(quad.tr.vertices.x, quad.tr.vertices.y));
+                    points.push(cc.p(quad.tl.vertices.x, quad.tl.vertices.y));
+
+                    drawingUtil.drawPoly(points, 4, true);
+                }
+            }
+
+            if (node._debugBones) {
+                // Bone lengths.
+                var bone;
+                drawingUtil.setLineWidth(2);
+                drawingUtil.setDrawColor(255, 0, 0, 255);
+
+                for (i = 0, n = locSkeleton.bones.length; i < n; i++) {
+                    bone = locSkeleton.bones[i];
+                    var x = bone.data.length * bone.m00 + bone.worldX;
+                    var y = bone.data.length * bone.m10 + bone.worldY;
+                    drawingUtil.drawLine(cc.p(bone.worldX, bone.worldY), cc.p(x, y));
+                }
+
+                // Bone origins.
+                drawingUtil.setPointSize(4);
+                drawingUtil.setDrawColor(0, 0, 255, 255); // Root bone is blue.
+
+                for (i = 0, n = locSkeleton.bones.length; i < n; i++) {
+                    bone = locSkeleton.bones[i];
+                    drawingUtil.drawPoint(cc.p(bone.worldX, bone.worldY));
+                    if (i == 0) {
+                        drawingUtil.setDrawColor(0, 255, 0, 255);
+                    }
+                }
+            }
+
+            cc.kmGLPopMatrix();
+        }
+    };
+
+    cc.ArmatureRenderCmdWebGL = function(node){
+        this._node = node;
+    };
+
+    cc.ArmatureRenderCmdWebGL.prototype.rendering = function(ctx){
+        var _t = this._node;
+
+        cc.kmGLMatrixMode(cc.KM_GL_MODELVIEW);
+        cc.kmGLPushMatrix();
+        cc.kmGLLoadMatrix(_t._stackMatrix);
+
+        //TODO REMOVE THIS FUNCTION
+        if (_t._parentBone == null && _t._batchNode == null) {
+            //        CC_NODE_DRAW_SETUP();
+        }
+
+        var locChildren = _t._children;
+        var alphaPremultiplied = cc.BlendFunc.ALPHA_PREMULTIPLIED, alphaNonPremultipled = cc.BlendFunc.ALPHA_NON_PREMULTIPLIED;
+        for (var i = 0, len = locChildren.length; i< len; i++) {
+            var selBone = locChildren[i];
+            if (selBone && selBone.getDisplayRenderNode) {
+                var node = selBone.getDisplayRenderNode();
+
+                if (null == node)
+                    continue;
+
+                node.setShaderProgram(_t._shaderProgram);
+
+                switch (selBone.getDisplayRenderNodeType()) {
+                    case ccs.DISPLAY_TYPE_SPRITE:
+                        if(node instanceof ccs.Skin){
+                            node.updateTransform();
+
+                            var func = selBone.getBlendFunc();
+                            if (func.src != alphaPremultiplied.src || func.dst != alphaPremultiplied.dst)
+                                node.setBlendFunc(selBone.getBlendFunc());
+                            else {
+                                if ((_t._blendFunc.src == alphaPremultiplied.src && _t._blendFunc.dst == alphaPremultiplied.dst)
+                                    && !node.getTexture().hasPremultipliedAlpha())
+                                    node.setBlendFunc(alphaNonPremultipled);
+                                else
+                                    node.setBlendFunc(_t._blendFunc);
+                            }
+                            node.draw(ctx);
+                        }
+                        break;
+                    case ccs.DISPLAY_TYPE_ARMATURE:
+                        node.draw(ctx);
+                        break;
+                    default:
+                        node.visit(ctx);                           //TODO need fix soon
+                        break;
+                }
+            } else if(selBone instanceof cc.Node) {
+                selBone.setShaderProgram(_t._shaderProgram);       //TODO need fix soon
+                selBone.visit(ctx);
+                //            CC_NODE_DRAW_SETUP();
+            }
+        }
+
+        cc.kmGLPopMatrix();
+    };
 }

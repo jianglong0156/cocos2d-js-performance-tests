@@ -223,7 +223,7 @@
          * var physicsSprite1 = cc.PhysicsSprite.create("res/HelloHTML5World.png");
          * var physicsSprite2 = new cc.PhysicsSprite("res/HelloHTML5World.png",cc.rect(0,0,480,320));
          *
-         * 2.Create a sprite with a sprite frame name. Must add "#" before fame name.
+         * 2.Create a sprite with a sprite frame name. Must add "#" before frame name.
          * var physicsSprite = new cc.PhysicsSprite('#grossini_dance_01.png');
          *
          * 3.Create a sprite with a sprite frame
@@ -261,13 +261,25 @@
                     this.initWithSpriteFrame(fileName);
                 }
             }
-            this._transformCmd = new cc.PhysicsSpriteTransformCmdCanvas(this);
-            cc.rendererCanvas.pushRenderCommand(this._transformCmd);
+
+            if(cc._renderType === cc._RENDER_TYPE_CANVAS)
+                this._transformCmd = new cc.CustomRenderCmdCanvas(this, function(){
+                    if (this.transform) {
+                        this.transform();
+                    }
+                });
+            else
+                this._transformCmd = new cc.CustomRenderCmdWebGL(this, function(){
+                    if(this._transformForRenderer){
+                        this._transformForRenderer();
+                    }
+                });
+            cc.renderer.pushRenderCommand(this._transformCmd);
         },
 
         visit: function(){
+            cc.renderer.pushRenderCommand(this._transformCmd);
             cc.Sprite.prototype.visit.call(this);
-            cc.rendererCanvas.pushRenderCommand(this._transformCmd);
         },
 
         /**
