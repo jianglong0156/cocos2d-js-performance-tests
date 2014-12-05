@@ -1,0 +1,33 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Cocos2d-HTML5 Test Cases</title>
+</head>
+<body>
+<style>
+    .button{text-align: center;margin-bottom: 10px;}
+    .button button{padding: 5px;margin: 5px;}
+</style>
+<div class="button">
+    <button id="+">+++</button>
+    <span id="num">---</span>
+    <button id="-">---</button>
+</div>
+<div>
+    <canvas id="gameCanvas" width="800" height="450"></canvas>
+</div>
+<script src="./engine/CCBoot.js"></script>
+<script>
+
+    cc.game.onStart = function(){
+        cc.LoaderScene.preload(g_resources, function () {
+            cc.director.runScene(new HelloWorldScene());
+        }, this);
+
+    };
+    cc.game.run();
+
+</script>
+</body>
+</html>

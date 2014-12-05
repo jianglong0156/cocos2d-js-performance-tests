@@ -1,0 +1,155 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Cocos2d-HTML5 Test Cases</title>
+</head>
+<body>
+<style>
+    .button{text-align: center;margin-bottom: 10px;}
+    .button button{padding: 5px;margin: 5px;}
+</style>
+<div class="button">
+    <button id="+">+++</button>
+    <span id="num">---</span>
+    <button id="-">---</button>
+</div>
+<div>
+    <script src="all.js"></script>
+    <script>
+        (function () {
+
+            var W = 800;
+            var H = 450;
+            var NW = 700;
+            var NH = 500;
+            var R = 6;
+            var C = 8;
+            var INSET= 10;
+            var nodeW= (NW/C);
+            var nodeH= (NH/R);
+
+            var numElem = document.getElementById("num");
+
+            function init( parent, img ) {
+
+
+                create500(parent, img);
+                create500(parent, img);
+                create500(parent, img);
+                create500(parent, img);
+                create500(parent, img);
+                create500(parent, img);
+
+
+                var a = document.getElementById("+");
+                a.addEventListener("click", function(){
+                    create500(parent, img);
+                }, false);
+                var b = document.getElementById("-");
+                b.addEventListener("click", function(){
+                    remove500(parent, img);
+                }, false);
+            }
+
+            var list = [];
+            function create500(parent, img){
+                for(var i=0; i<500; i++){
+
+                    var n = new cc.node.Node().
+                            setPosition(parseInt(Math.random() * W), parseInt(Math.random() * H)).
+                            setContentSize(nodeW - INSET, nodeH - INSET).
+                            setColor(Math.random() / 2 + .5, Math.random() / 2 + .5, Math.random() / 2 + .5).
+                            setRotation(Math.random() * 360);
+
+                    n.draw= function( ctx) {
+
+                        ctx.tintColor= this._color;
+                        ctx.drawImage( img, 0, 0 );
+                    };
+
+                    parent.addChild(n);
+                    list.push(n);
+
+                    var period = 0.5 + (Math.random() * 1000) / 500.0;
+                    var growDuration = 0.5 + (Math.random() * 1000) / 500.0;
+                    var r = cc.repeat(cc.rotateBy(period, 180), 1);
+                    var seq0 = cc.sequence(r);
+                    var seq1 = seq0.reverse();
+                    var seq = cc.repeatForever(cc.sequence(seq0, seq1));
+                    var s00 = cc.scaleTo(growDuration,.5,.5);
+                    var s01 = cc.scaleBy(growDuration,.5,.5);
+                    var seq2 = cc.repeatForever(cc.sequence(s00, s01));
+
+                    n.runAction(seq);
+                    n.runAction(seq2);
+
+                }
+                numElem.innerHTML = list.length;
+
+            }
+
+            function remove500(parent, img){
+                if(list.length <=500){
+                    return;
+                }
+                for(var i=0; i<500; i++){
+                    parent.removeChild(list.shift());
+                }
+                numElem.innerHTML = list.length;
+            }
+
+            function createDirector( name, renderer, img ) {
+
+                document.body.appendChild(renderer._surface);
+
+                var director = new cc.node.Director().
+                        setContentSize(W, H).
+                        setColor(0, 0, 1).
+                        setRenderer( renderer ).
+                        setName(name);
+
+                var scene1 = director.createScene().
+                        setColor(0, 0, 0).
+                        setName("scene1").
+                        onEnter(function (scene) {
+                            console.log(scene._name + " enter.");
+                        }).
+                        onExit(function (scene) {
+                            console.log(scene._name + " exit.");
+                        }).
+                        onEnterTransitionDidFinish(function (scene) {
+                            console.log(scene._name + " enter did finish.");
+                        }).
+                        onExitTransitionDidStart(function (scene) {
+                            console.log(scene._name + " exit did start.");
+                        });
+
+                init(scene1, img);
+
+                director.runScene(scene1);
+
+                return director;
+            }
+
+            var img= new Image();
+            img.onload= function() {
+
+                var director= createDirector("d2", new cc.render.WebGLRenderer(W, H), img).setColor(0,0,1);
+                new cc.render.Texture2D(img).__setAsGLTexture( director.getRenderer().getCanvasContext() );
+            };
+            img.src="bunny.png";
+
+            var img2= new Image();
+            img2.onload= function() {
+
+                var director= createDirector("d1", new cc.render.CanvasRenderer(W, H), img2);
+
+                new cc.render.Texture2D(img2);
+            };
+            img2.src="grossini.png";
+        }());
+    </script>
+</div>
+</body>
+</html>
