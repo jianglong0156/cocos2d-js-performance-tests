@@ -1,0 +1,193 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Cocos2d-HTML5 Test Cases</title>
+    <meta name="viewport"
+          content="width=device-width,initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no,target-densitydpi=device-dpi"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+
+    <meta name="full-screen" content="true"/>
+    <meta name="screen-orientation" content="portrait"/>
+    <meta name="x5-fullscreen" content="true"/>
+    <meta name="360-fullscreen" content="true"/>
+</head>
+<body>
+<style>
+    #fps{color: #fff;z-index: 9999;font-size: 26px;position: absolute;}
+    #info{color: #fff;z-index: 9999;font-size: 26px;position: absolute;left: 90px;}
+    .btn{height: 30px;position: absolute;z-index: 9999;left: 0;font-size: 20px;}
+    #addition{top: 40px;width: 30px;}
+    #subtraction{top: 80px;width: 30px;}
+    #rotate{top: 120px;width: 130px;}
+    #move{top: 160px;width: 130px;}
+    #scale{top: 200px;width: 130px;}
+    #all{top: 240px;width: 130px;}
+</style>
+<div id="fps">000</div>
+<div id="info">Unknown</div>
+<button class="btn" id="addition">+</button>
+<button class="btn" id="subtraction">-</button>
+<button class="btn" id="rotate">rotate</button>
+<button class="btn" id="move">move</button>
+<button class="btn" id="scale">scale</button>
+<button class="btn" id="all">all</button>
+<div>
+    <script src="all.min.js"></script>
+    <script>
+        var fps = 0;
+        (function () {
+
+            var param = {};
+            var paramArr = location.href.match(/([^\?\&]*)\=([^\?\&]*)/g);
+            paramArr && paramArr.forEach(function(item){
+                item = item.split("=");
+                param[item[0]] = item[1];
+
+            });
+
+            var h = document.getElementById("fps");
+            setInterval(function(){
+                h.innerHTML = fps;
+                fps = 0;
+            }, 1000);
+
+            var TestScene = [
+                {a: 2, b: 25},
+                {a: 4, b: 25}, //100
+                {a: 6, b: 25}, //150
+                {a: 8, b: 25}, //200
+                {a: 10, b: 25}, //250
+                {a: 10, b: 30}, //300
+                {a: 10, b: 35}, //350
+                {a: 10, b: 40}
+            ];
+            var level = (param["t"]-0) || 0;
+
+            var W = 640;
+            var H = 960;
+            var list = [];
+
+            var numElem = document.getElementById("info");
+
+            function init( parent, img ) {
+
+                createFish(parent, TestScene[level], img);
+
+                var a = document.getElementById("addition");
+                a.addEventListener("click", function(){
+                    createFish(parent, TestScene[++level], img);
+                }, false);
+                var b = document.getElementById("subtraction");
+                b.addEventListener("click", function(){
+                    createFish(parent, TestScene[--level], img);
+                }, false);
+
+                var c = document.getElementById("rotate");
+                c.addEventListener("click", function(){
+                    for(var i=0; i<list.length; i++){
+                        var tw = cc.rotateBy(5, 360);
+                        list[i].runAction(tw);
+                    }
+                });
+                var d = document.getElementById("move");
+                d.addEventListener("click", function(){
+                    for(var i=0; i<list.length; i++){
+                        var tw = cc.moveBy(5, cc.p(50, 0));
+                        list[i].runAction(tw);
+                    }
+                });
+                var e = document.getElementById("scale");
+                e.addEventListener("click", function(){
+                    for(var i=0; i<list.length; i++){
+                        var tw = cc.scaleTo(5, 2, 1);
+                        list[i].runAction(tw);
+                    }
+                });
+                var f = document.getElementById("all");
+                f.addEventListener("click", function(){
+                    for(var i=0; i<list.length; i++){
+                        var tw = cc.spawn(
+                                cc.rotateBy(5, 360),
+                                cc.moveBy(5, cc.p(50, 0)),
+                                cc.scaleTo(5, 2, 1)
+                        );
+                        list[i].runAction(tw);
+                    }
+                });
+            }
+
+            function createFish(parent, obj, img){
+                if(!obj) return;
+                parent._children.length = list.length = 0;
+                var a = obj.a;
+                var b = obj.b;
+
+                var totalNum = a*b;
+                var info = document.getElementById("info");
+                if(info){
+                    info.innerHTML = totalNum.toString();
+                }
+
+                for(var  i=0; i<totalNum; i++){
+                    (function(i){
+                        var tmp = new cc.node.Node().setPosition((i % a) * 25, (i / a | 0) * 13);
+
+                        tmp.draw = function( ctx) {
+
+                            ctx.tintColor= this._color;
+                            ctx.drawImage( img, 0, 0, 50, 26, 0, 0, 50, 26);
+                        };
+                        list.push(tmp);
+                        parent.addChild(tmp);
+                    })(i)
+                }
+
+            }
+
+            function createDirector( name, renderer, img ) {
+
+                document.body.appendChild(renderer._surface);
+
+                var director = new cc.node.Director().
+                        setContentSize(W, H).
+                        setColor(0, 0, 1).
+                        setRenderer( renderer ).
+                        setName(name);
+
+                var scene1 = director.createScene().
+                        setColor(0, 0, 0).
+                        setName("scene1").
+                        onEnter(function (scene) {
+                            console.log(scene._name + " enter.");
+                        }).
+                        onExit(function (scene) {
+                            console.log(scene._name + " exit.");
+                        }).
+                        onEnterTransitionDidFinish(function (scene) {
+                            console.log(scene._name + " enter did finish.");
+                        }).
+                        onExitTransitionDidStart(function (scene) {
+                            console.log(scene._name + " exit did start.");
+                        });
+
+                init(scene1, img);
+
+                director.runScene(scene1);
+
+                return director;
+            }
+
+            var img2= new Image();
+            img2.onload= function() {
+
+                var director= createDirector("d1", new cc.render.CanvasRenderer(W, H), img2);
+
+                new cc.render.Texture2D(img2);
+            };
+            img2.src="../cocos3.2/res/anim1.png";
+        }());
+    </script>
+</div>
+</body>
+</html>
