@@ -63,6 +63,7 @@ var GameLayer = cc.Layer.extend({
         this.init();
     },
     init: function () {
+        cc.spriteFrameCache.addSpriteFrames(res.enemys_plist);
         //cc.spriteFrameCache.addSpriteFrames(res.textureTransparentPack_plist);
         //cc.spriteFrameCache.addSpriteFrames(res.textureOpaquePack_plist);
         //cc.spriteFrameCache.addSpriteFrames(res.b01_plist);

@@ -46,7 +46,7 @@ var Enemy = cc.Sprite.extend({
     _hurtColorLife:0,
     _enemyIndex:0,
     ctor:function (arg) {
-        ED._super(this,"res/"+arg.textureName);
+        ED._super(this,"#"+arg.textureName);
         if (arg.textureName != "E4.png")
             this.flippedY = true;
         this.setAnchorPoint(0.5, 0.5);

@@ -84,7 +84,10 @@ var res = {
     explode3:"res/explode3.png",
     hit:"res/hit.png",
     bg01:"res/bg01.png",
-    overBg:"res/overBg.png"
+    overBg:"res/overBg.png",
+    enemys_plist:"res/enemys.plist",
+    enemys_png:"res/enemys.png"
+
 };
 
 var g_mainmenu = [
@@ -98,8 +101,8 @@ var g_mainmenu = [
     res.mainMainMusic_mp3,
     res.mainMainMusic_ogg,
     res.menuTitle_png,
-    res.textureTransparentPack_plist,
-    res.textureTransparentPack_png
+    //res.textureTransparentPack_plist,
+    //res.textureTransparentPack_png
 ];
 
 var g_maingame = [
@@ -155,5 +158,7 @@ var g_maingame = [
     res.explode3,
     res.hit,
     res.bg01,
-    res.overBg
+    res.overBg,
+    res.enemys_plist,
+    res.enemys_png
 ];
