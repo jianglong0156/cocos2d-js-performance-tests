@@ -134,7 +134,7 @@ window.addEventListener("DOMContentLoaded", function() {
          *
          */
         function onEnd(game) {
-            cc.render.RENDER_ORIGIN = "bottom";
+            cc.render.RENDER_ORIGIN = "top";
             // prefer this form:
             game.runScene(SysMenu.scene());
 
