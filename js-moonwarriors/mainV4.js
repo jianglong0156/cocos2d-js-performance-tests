@@ -85,7 +85,8 @@ window.addEventListener("DOMContentLoaded", function() {
             height: 720,
             scaleStrategy: "scale_aspect",
             canvasPosition: "center",
-            canvasElement: "gameCanvas"
+            canvasElement: "gameCanvas",
+            rendererType:"canvas"
         });
         //resizeWithBrowserSize(true).  --> implicit yes.
         ED.LoaderScene.preload(

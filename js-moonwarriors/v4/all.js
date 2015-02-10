@@ -21497,10 +21497,8 @@ var cc;
          * @param e {MouseEvent}
          */
         function mouseDown(e) {
-            e.preventDefault();
-            if (e.stopPropagation) {
-                e.stopPropagation();
-            }
+            //e.preventDefault();
+            //if (e.stopPropagation) {e.stopPropagation()}
             if (!_scene) {
                 return;
             }
@@ -21528,10 +21526,8 @@ var cc;
          * @param e {MouseEvent}
          */
         function mouseUp(e) {
-            e.preventDefault();
-            if (e.stopPropagation) {
-                e.stopPropagation();
-            }
+            //e.preventDefault();
+            //if (e.stopPropagation) {e.stopPropagation()}
             if (!_scene) {
                 return;
             }
@@ -21574,10 +21570,8 @@ var cc;
          * @param _event {string} mouseout/mouseover are treated as mouseMove. If set, this variable forces the event type.
          */
         function mouseMove(e, _event) {
-            e.preventDefault();
-            if (e.stopPropagation) {
-                e.stopPropagation();
-            }
+            //e.preventDefault();
+            //if (e.stopPropagation) {e.stopPropagation()}
             if (!_scene) {
                 return;
             }
@@ -22789,7 +22783,16 @@ var cc;
                 if (typeof ri.orientation === "undefined") {
                     ri.orientation = "both";
                 }
-                var renderer = new cc.render.WebGLRenderer(ri.width, ri.height, document.getElementById(ri.canvasElement));
+                if (typeof ri.rendererType === "undefined") {
+                    ri.orientation = "canvas";
+                }
+                var renderer = null;
+                if (ri.rendererType === "webgl") {
+                    renderer = new cc.render.WebGLRenderer(ri.width, ri.height, document.getElementById(ri.canvasElement));
+                }
+                else {
+                    renderer = new cc.render.CanvasRenderer(ri.width, ri.height, document.getElementById(ri.canvasElement));
+                }
                 this._director.setRenderer(renderer);
                 this._renderer = renderer;
                 ri.scaleStrategy = ri.scaleStrategy.toUpperCase();
@@ -24196,6 +24199,7 @@ var cc;
     };
     cc.node.Node.extend = _Class.extend;
     cc.node.Sprite.extend = _Class.extend;
+    cc.node.FastSprite.extend = _Class.extend;
     cc.node.Scene.extend = _Class.extend;
     cc.action.Action.extend = _Class.extend;
     cc.Class = _Class;

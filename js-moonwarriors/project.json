@@ -9,6 +9,7 @@
     "modules" : ["cocos2d"],
 
     "jsList" : [
+        "src/engineAdapter/Adapter.js",
         "src/Resource.js",
         "src/config/GameConfig.js",
         "src/config/EnemyType.js",
@@ -29,7 +30,6 @@
         "src/HitEffect.js",
         "src/SparkEffect.js",
         "src/Background.js",
-        "src/SaveDataToServer.js",
-        "src/engineAdapter/Adapter.js"
+        "src/SaveDataToServer.js"
     ]
 }

@@ -599,6 +599,49 @@ ED.getRenderStr = function ()
     }
     else
     {
-        return "Canvas";
+        if (ED.gameObj._director.getRenderer().getRenderingContext().type === "webgl")
+        {
+            return "WebGL"
+        }
+        else
+        {
+            return "Canvas";
+        }
+
     }
 };
+
+if (ED.version === EDV4)
+{
+    cc.SpriteBatchNode = cc.Node.extend({
+        _img:null,
+        _texture:null,
+        actors:[],
+        ctor: function (fileUrl) {
+            cc.Node.prototype.constructor.call(this);
+        }
+
+
+    });
+}
+if (ED.version === EDV3)
+{
+    ED.FastSprite = cc.Sprite;
+}
+else
+{
+    ED.FastSprite = cc.node.FastSprite;
+    //ED.FastSprite = cc.Sprite;
+}
+
+ED.enemyInit = function (target, arg)
+{
+    if (ED.version === EDV3)
+    {
+        ED._super(target,arg);
+    }
+    else
+    {
+        ED._super(target, arg);
+    }
+}

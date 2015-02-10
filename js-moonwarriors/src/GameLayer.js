@@ -93,7 +93,7 @@ var GameLayer = cc.Layer.extend({
         this._texTransparentBatch = new cc.Node();
         this.addChild(this._texTransparentBatch);
 
-        this._enemyNode = new cc.Node();
+        this._enemyNode = new cc.SpriteBatchNode(res.enemys_png);
         this.addChild(this._enemyNode);
 
         winSize = cc.director.getWinSize();

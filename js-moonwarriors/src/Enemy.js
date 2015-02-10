@@ -30,7 +30,7 @@
  Quality Assurance: Sean Lin (林顺)
  ****************************************************************************/
 
-var Enemy = cc.Sprite.extend({
+var Enemy = ED.FastSprite.extend({
     eID:0,
     enemyType:1,
     active:true,
@@ -46,7 +46,9 @@ var Enemy = cc.Sprite.extend({
     _hurtColorLife:0,
     _enemyIndex:0,
     ctor:function (arg) {
-        ED._super(this,"#"+arg.textureName);
+        ED.enemyInit(this,"#"+arg.textureName);
+        //ED._super(this,"#"+arg.textureName);
+
         if (arg.textureName != "E4.png")
             this.flippedY = true;
         this.setAnchorPoint(0.5, 0.5);
