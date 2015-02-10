@@ -30,7 +30,7 @@
  Quality Assurance: Sean Lin (林顺)
  ****************************************************************************/
 
-var Explosion = cc.Sprite.extend({
+var Explosion = ED.FastSprite.extend({
     tmpWidth:0,
     tmpHeight:0,
     active:true,

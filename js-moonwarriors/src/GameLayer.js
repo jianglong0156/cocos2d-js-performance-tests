@@ -118,7 +118,7 @@ var GameLayer = cc.Layer.extend({
         // explosion batch node
         cc.spriteFrameCache.addSpriteFrames(res.explosion_plist);
 
-        this._explosions = new cc.Node();
+        this._explosions = new cc.SpriteBatchNode(res.explosion_png);
         this.addChild(this._explosions);
         Explosion.sharedExplosion();
 
