@@ -1,5 +1,26 @@
-﻿
-<form  action="saveData.php" method="post">
-<input name="testData" value='[{"timeData":1.5,"runTime":13054897}, {"timeData":2.0,"runTime":130512134897}]' >
-<input type="submit"  value="确定"/>
-</form>
+﻿<html xmlns="http://www.w3.org/1999/html">
+<body>
+<input type="button"  value="canvas v3" onclick="jumpToCanvasV3()"/>
+<input type="button"  value="canvas v4" onclick="jumpToCanvasV4()"/>
+<input type="button"  value="webgl v3" onclick="jumpToWebglV3()"/>
+<input type="button"  value="webgl v4" onclick="jumpToWebglV4()"/>
+<script>
+    function jumpToCanvasV3()
+    {
+        location.href = location.href + "/../../../moonCanvas/indexV3.html";
+    };
+    function jumpToCanvasV4()
+    {
+        location.href = location.href + "/../../../moonCanvas/indexV4.html";
+    };
+    function jumpToWebglV3()
+    {
+        location.href = location.href + "/../../../moonWebgl/indexV3.html";
+    };
+    function jumpToWebglV4()
+    {
+        location.href = location.href + "/../../../moonWebgl/indexV4.html";
+    };
+</script>
+</body>
+</html>
