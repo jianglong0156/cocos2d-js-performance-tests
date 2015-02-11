@@ -9,7 +9,8 @@
 <input type="button"  value="canvas v4" onclick="jumpToCanvasV4()"/>
 <input type="button"  value="webgl v3" onclick="jumpToWebglV3()"/>
 <input type="button"  value="webgl v4" onclick="jumpToWebglV4()"/>
-<input type="button"  value="showResult" onclick="showResult()"/>
+<input type="button"  value="showCanvasResult" onclick="showCanvasResult()"/>
+<input type="button"  value="showWebglResult" onclick="showWebglResult()"/>
 <script>
     function jumpToCanvasV3()
     {
@@ -27,9 +28,13 @@
     {
         location.href = location.href + "/../../../moonWebgl/indexV4.html";
     };
-    function showResult()
+    function showCanvasResult()
     {
-        location.href = location.href + "/../showBarGraph.php";
+        location.href = location.href + "/../../../moonCanvas/server/showBarGraph.php";
+    };
+    function showWebglResult()
+    {
+        location.href = location.href + "/../../../moonWebgl/server/showBarGraph.php";
     };
 </script>
 </body>
