@@ -45,6 +45,7 @@ for ($i = 0; $i + 1 < $resultLength; $i+=2)
 <!doctype html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
   <script type="text/javascript" src="http://cdn.hcharts.cn/jquery/jquery-1.8.3.min.js"></script>
   <script type="text/javascript" src="http://cdn.hcharts.cn/highcharts/highcharts.js"></script>
   <script type="text/javascript" src="http://cdn.hcharts.cn/highcharts/exporting.js"></script>

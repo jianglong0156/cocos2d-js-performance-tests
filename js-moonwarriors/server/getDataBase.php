@@ -1,13 +1,17 @@
 <?php
-function getConnectMyDB()
+if (!function_exists('getConnectMyDB'))
 {
-    $db_name = "sqlite:./myDB.sqlite";
-    $db = new PDO($db_name);
-    if ($db){ 
-        echo 'connect ok'; 
-    }else{ 
-        echo 'connect bad'; 
+    function getConnectMyDB()
+    {
+        $db_name = "sqlite:./myDB.sqlite";
+        $db = new PDO($db_name);
+        if ($db){ 
+            echo 'connect ok'; 
+        }else{ 
+            echo 'connect bad'; 
+        }
+        return $db;
     }
-    return $db
 }
+
 ?>
