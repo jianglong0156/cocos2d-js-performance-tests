@@ -88,6 +88,6 @@ var SaveDataToServer = {
     addEventWithHtml:function()
     {
         document.getElementById("inputForm").style.display = "block";
-        document.getElementById("inputForm").getElementsByClassName("testCaseId")[0].value = self._caseId;
+        document.getElementById("inputForm").getElementsByClassName("testCaseId")[0].value = this._caseId;
     }
 };
