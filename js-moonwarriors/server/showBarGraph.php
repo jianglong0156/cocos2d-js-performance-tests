@@ -1,11 +1,8 @@
 <?php
-$db_name = "sqlite:./myDB.sqlite";
-$db = new PDO($db_name);
-if ($db){ 
-    echo 'connect ok'; 
-}else{ 
-    echo 'connect bad'; 
-}
+include("./getDataBase.php");
+
+$db = getConnectMyDB();
+
 $resultStr = "SELECT caseID, renderMode, systemVersion, aveTime, deviceModel, enemyMax, browerType, sysOS 
               FROM baseTable ORDER BY deviceModel DESC, browerType ASC, caseID ASC";
 
