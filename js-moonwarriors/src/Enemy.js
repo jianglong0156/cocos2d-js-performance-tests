@@ -46,8 +46,8 @@ var Enemy = ED.FastSprite.extend({
     _hurtColorLife:0,
     _enemyIndex:0,
     ctor:function (arg) {
-        ED.enemyInit(this,"#"+arg.textureName);
-        //ED._super(this,"#"+arg.textureName);
+        this._super("#"+arg.textureName);
+        //this._super("#"+arg.textureName);
 
         if (arg.textureName != "E4.png")
             this.flippedY = true;
@@ -123,7 +123,7 @@ var Enemy = ED.FastSprite.extend({
     },
     collideRect:function (x, y) {
         var w = this.width, h = this.height;
-        return ED.rect(x - w / 2, y - h / 4, w, h / 2+20);
+        return cc.rect(x - w / 2, y - h / 4, w, h / 2+20);
     }
 });
 

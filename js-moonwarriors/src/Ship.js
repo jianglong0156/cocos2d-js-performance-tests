@@ -46,7 +46,7 @@ var Ship = cc.Sprite.extend({
     active:true,
     bornSprite:null,
     ctor:function () {
-        ED._super(this,res.ship01);
+        this._super(res.ship01);
         this.tag = this.zOrder;
         this.setAnchorPoint(0.5, 0.5);
         this.x = this.appearPosition.x;
@@ -54,18 +54,21 @@ var Ship = cc.Sprite.extend({
 
         // set frame
         //var frame2 = cc.spriteFrameCache.getSpriteFrame("ship03.png");
+        var frame0 = cc.spriteFrameCache.getSpriteFrame("ship01.png");
+        var frame1 = cc.spriteFrameCache.getSpriteFrame("ship02.png");
+
+        var animFrames = [];
+        //animFrames.push(frame2);
+        animFrames.push(frame0);
+        animFrames.push(frame1);
 
         // ship animate
-        var animation = cc.Animation.create();
-        animation.addSpriteFrameWithFile("res/ship01.png");
-        animation.addSpriteFrameWithFile("res/ship02.png");
-        ED.setDelayPerUnit(animation, 0.1);
+        var animation = new cc.Animation(animFrames, 0.1);
         var animate = cc.animate(animation);
-        var repeatForeverAction = cc.repeatForever(animate);
-        this.runAction(repeatForeverAction);
-        ED.schedule(this, this.shoot, 0.2);
+        this.runAction(animate.repeatForever());
+        ED.schedule(this, this.shoot, 1 / 6);
 
-        this.initBornSprite();
+        //this.initBornSprite();
         this.born();
     },
     update:function (dt) {
@@ -108,7 +111,7 @@ var Ship = cc.Sprite.extend({
     },
     collideRect:function (x, y) {
         var w = this.width, h = this.height;
-        return ED.rect(x - w / 2, y - h / 2, w, h / 2);
+        return cc.rect(x - w / 2, y - h / 2, w, h / 2);
     },
     initBornSprite:function () {
         this.bornSprite = new cc.Sprite(res.ship03);
@@ -122,17 +125,20 @@ var Ship = cc.Sprite.extend({
     born:function () {
         //revive effect
         this.canBeAttack = false;
-        this.bornSprite.scale = 8;
-        this.bornSprite.runAction(cc.scaleTo(0.5, 1, 1));
-        this.bornSprite.visible = true;
+
+        this.scale = 8;
+
+        //this.bornSprite.scale = 8;
+        //this.bornSprite.runAction(cc.scaleTo(0.5, 1, 1));
+        //this.bornSprite.visible = true;
         var blinks = cc.blink(3, 9);
         var makeBeAttack = cc.callFunc(function (t) {
             t.canBeAttack = true;
             t.visible = true;
-            t.bornSprite.visible = false;
+            //t.bornSprite.visible = false;
         }.bind(this));
-        this.runAction(cc.sequence(cc.delayTime(0.5), blinks, makeBeAttack));
-
+        //this.runAction(cc.sequence(cc.delayTime(0.5), blinks, makeBeAttack));
+        this.runAction(cc.sequence(cc.scaleTo(0.5, 1, 1), cc.delayTime(0.5), blinks, makeBeAttack));
         this.HP = 5;
         this._hurtColorLife = 0;
         this.active = true;

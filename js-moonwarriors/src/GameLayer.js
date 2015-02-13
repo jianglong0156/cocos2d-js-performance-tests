@@ -59,13 +59,13 @@ var GameLayer = cc.Layer.extend({
     _enemyNode: null,
     _hideAllFlag:false,
     ctor: function () {
-        ED._super(this);
+        this._super();
         this.init();
     },
     init: function () {
-        cc.spriteFrameCache.addSpriteFrames(res.enemys_plist);
+        //cc.spriteFrameCache.addSpriteFrames(res.enemys_plist);
         //cc.spriteFrameCache.addSpriteFrames(res.textureTransparentPack_plist);
-        //cc.spriteFrameCache.addSpriteFrames(res.textureOpaquePack_plist);
+        cc.spriteFrameCache.addSpriteFrames(res.textureOpaquePack_plist);
         //cc.spriteFrameCache.addSpriteFrames(res.b01_plist);
 
         // reset global values
@@ -99,7 +99,7 @@ var GameLayer = cc.Layer.extend({
         winSize = cc.director.getWinSize();
         this._levelManager = new LevelManager(this);
 
-        this.screenRect = ED.rect(0, 0, winSize.width, winSize.height + 10);
+        this.screenRect = cc.rect(0, 0, winSize.width, winSize.height + 10);
 
         // ship life
         var life = new cc.Sprite("res/ship03.png");
