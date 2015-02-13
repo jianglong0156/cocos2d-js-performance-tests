@@ -68,9 +68,9 @@ var GameOver = cc.Layer.extend({
         var singalHeight = MW.menuHeight;
         var singalWidth = MW.menuWidth;
 
-        var playAgainNormal = new cc.Sprite(res.menu_png, cc.rect(singalWidth * 3, 0, singalWidth, singalHeight));
-        var playAgainSelected = new cc.Sprite(res.menu_png, cc.rect(singalWidth * 3, singalHeight, singalWidth, singalHeight));
-        var playAgainDisabled = new cc.Sprite(res.menu_png, cc.rect(singalWidth * 3, singalHeight * 2, singalWidth, singalHeight));
+        var playAgainNormal = new cc.Sprite(res.menu_png, ED.rect(singalWidth * 3, 0, singalWidth, singalHeight));
+        var playAgainSelected = new cc.Sprite(res.menu_png, ED.rect(singalWidth * 3, singalHeight, singalWidth, singalHeight));
+        var playAgainDisabled = new cc.Sprite(res.menu_png, ED.rect(singalWidth * 3, singalHeight * 2, singalWidth, singalHeight));
 
         var cocos2dhtml5 = new cc.Sprite(res.cocos2d_html5_png);
         cocos2dhtml5.x = 240;

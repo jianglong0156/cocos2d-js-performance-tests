@@ -542,7 +542,16 @@ else
     }
 }
 
-
+ED.rect = function (x, y, width, height)
+{
+    var rect = cc.rect(x, y, width, height);
+    if (ED.version === EDV4)
+    {
+        rect.width = rect.w;
+        rect.height = rect.h;
+    }
+    return rect;
+}
 
 if (ED.version === EDV4)
 {

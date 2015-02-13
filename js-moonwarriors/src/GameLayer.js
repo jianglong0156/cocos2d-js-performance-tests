@@ -60,7 +60,10 @@ var GameLayer = cc.Layer.extend({
     _hideAllFlag:false,
     _createEnemyFlag:false,
     _updateTime:0,
+    _updateNum:0,
     _calcIndex:0,
+    _desroyContinuousNum:0,
+    _createContinuousNum:0,
     ctor: function () {
         ED._super(this);
         this.init();
@@ -102,7 +105,7 @@ var GameLayer = cc.Layer.extend({
         winSize = cc.director.getWinSize();
         this._levelManager = new LevelManager(this);
 
-        this.screenRect = cc.rect(0, 0, winSize.width, winSize.height + 10);
+        this.screenRect = ED.rect(0, 0, winSize.width, winSize.height + 10);
 
         // ship life
         var life = new cc.Sprite("res/ship03.png");
@@ -126,6 +129,8 @@ var GameLayer = cc.Layer.extend({
         Explosion.sharedExplosion();
 
         this._calcIndex = 0;
+        this._desroyContinuousNum = 0;
+        this._createContinuousNum = 0;
 
         // schedule
         this.scheduleUpdate();
@@ -152,23 +157,39 @@ var GameLayer = cc.Layer.extend({
 
     calcFrame:function ()
     {
-        if (this._updateTime > 0.02)
+        var aveUpdateNum = this._updateTime / this._updateNum;
+        if (aveUpdateNum > 0.02)
         {
             this._calcIndex++;
             this._createEnemyFlag = false;
             if (this._calcIndex > 2)
             {
                 this._calcIndex = 0;
-                console.log("time:" + this._updateTime + " curLength:" + Level1.enemies[0].Types.length + " nodeNum:" + SaveDataToServer._dataObj[1]["nodeNum"]);
+                console.log("time:" + aveUpdateNum + " curLength:" + Level1.enemies[0].Types.length + " nodeNum:" + SaveDataToServer._dataObj[1]["nodeNum"]);
+                console.log(" _texOpaqueBatch:" + this.getActiveNum(this._texOpaqueBatch) + " _sparkBatch:" + this.getActiveNum(this._sparkBatch)
+                 + " _texTransparentBatch:" + this.getActiveNum(this._texTransparentBatch) + " _enemyNode:" + this.getActiveNum(this._enemyNode));
                 Enemy.destroyTargetNum(Level1.enemies[0].Types.length);
-                Level1.enemies[0].Types.length = (Level1.enemies[0].Types.length / 2) | 0;
+
+                this._desroyContinuousNum++;
+                if (this._desroyContinuousNum == 1 && this._createContinuousNum == 1)
+                {
+                    Level1.enemies[0].Types.length = (Level1.enemies[0].Types.length / 2) | 0;
+                }
+                this._createContinuousNum = 0;
             }
 
         }
         else
         {
+            console.log("--------------time:" + aveUpdateNum);
             this._createEnemyFlag = true;
+
+            this._createContinuousNum++;
+            this._desroyContinuousNum = 0;
+
         }
+        this._updateTime = 0;
+        this._updateNum = 0;
     },
     scoreCounter:function () {
         if (this._state == STATE_PLAYING) {
@@ -201,66 +222,42 @@ var GameLayer = cc.Layer.extend({
 	        curPos = null;
         }
     },
-
+    getActiveNum:function(parent)
+    {
+        var nodeNum = 0;
+        var i, selChild, children = parent.children;
+        if (!children)
+        {
+            children = parent._children;
+        }
+        for (i in children) {
+            selChild = children[i];
+            if (selChild && selChild.active)
+                nodeNum++;
+        }
+        return nodeNum;
+    },
     addDataInArr:function (dt)
     {
         var nodeNum = 0;
-        var i, selChild, children = this._texOpaqueBatch.children;
-        if (!children)
-        {
-            children = this._texOpaqueBatch._children;
-        }
-        for (i in children) {
-            selChild = children[i];
-            if (selChild && selChild.active)
-                nodeNum++;
-        }
-
-        children = this._sparkBatch.children;
-        if (!children)
-        {
-            children = this._sparkBatch._children;
-        }
-        for (i in children) {
-            selChild = children[i];
-            if (selChild && selChild.active)
-                nodeNum++;
-        }
-
-        children = this._texTransparentBatch.children;
-        if (!children)
-        {
-            children = this._texTransparentBatch._children;
-        }
-        for (i in children) {
-            selChild = children[i];
-            if (selChild && selChild.active)
-                nodeNum++;
-        }
-
-        children = this._enemyNode.children;
-        if (!children)
-        {
-            children = this._enemyNode._children;
-        }
-        for (i in children) {
-            selChild = children[i];
-            if (selChild && selChild.active)
-                nodeNum++;
-        }
+        nodeNum += this.getActiveNum(this._texOpaqueBatch);
+        nodeNum += this.getActiveNum(this._sparkBatch);
+        nodeNum += this.getActiveNum(this._texTransparentBatch);
+        nodeNum += this.getActiveNum(this._enemyNode);
         SaveDataToServer.addData(dt, nodeNum);
     },
 
     update:function (dt) {
         var runTime =ED.getUpdateTime(dt);
-        this._updateTime = runTime;
         this._totalDt += runTime;
+        this._updateTime += runTime;
+        this._updateNum++;
         //console.log(this._totalDt);
         if (this._state == STATE_PLAYING) {
             if (this._totalDt > MW.calcStartTime)
             {
-                this.addDataInArr(runTime);
-                if (this._totalDt - MW.calcStartTime >= MW.calcTimeOfDuration && !this._hideAllFlag && Level1.enemies[0].Types.length == 1)
+                this.addDataInArr(this._updateTime/this._updateNum);
+                if (this._totalDt - MW.calcStartTime >= MW.calcTimeOfDuration && !this._hideAllFlag && Level1.enemies[0].Types.length <= 0)
                 {
                     this._state = STATE_GAMEOVER;
                     //cc.director.pause();

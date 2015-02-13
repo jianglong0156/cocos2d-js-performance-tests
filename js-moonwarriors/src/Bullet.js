@@ -52,6 +52,7 @@ var Bullet = cc.Sprite.extend({
         var x = this.x, y = this.y;
         this.x = x - this.xVelocity * dt;
 	    this.y = y - this.yVelocity * dt;
+
         if (x < 0 || x > g_sharedGameLayer.screenRect.width || y < 0 || y > g_sharedGameLayer.screenRect.height || this.HP <= 0) {
             this.destroy();
         }
@@ -65,7 +66,7 @@ var Bullet = cc.Sprite.extend({
         this.HP--;
     },
     collideRect:function (x, y) {
-        return cc.rect(x - 3, y - 3, 6, 6);
+        return ED.rect(x - 3, y - 3, 6, 6);
     }
 });
 

@@ -108,7 +108,7 @@ var Ship = cc.Sprite.extend({
     },
     collideRect:function (x, y) {
         var w = this.width, h = this.height;
-        return cc.rect(x - w / 2, y - h / 2, w, h / 2);
+        return ED.rect(x - w / 2, y - h / 2, w, h / 2);
     },
     initBornSprite:function () {
         this.bornSprite = new cc.Sprite(res.ship03);
