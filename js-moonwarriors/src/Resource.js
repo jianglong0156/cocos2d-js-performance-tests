@@ -101,8 +101,8 @@ var g_mainmenu = [
     //res.mainMainMusic_mp3,
     //res.mainMainMusic_ogg,
     res.menuTitle_png,
-    //res.textureTransparentPack_plist,
-    //res.textureTransparentPack_png
+    res.textureTransparentPack_plist,
+    res.textureTransparentPack_png
 ];
 
 var g_maingame = [
@@ -112,14 +112,14 @@ var g_maingame = [
     res.gameOverBack_png,
     res.arial_14_png,
     res.explosion_png,
-    //res.textureOpaquePack_png,
+    res.textureOpaquePack_png,
 
     //tmx
     //res.level01_tmx,
 
     //plist
     res.explosion_plist,
-    //res.textureOpaquePack_plist,
+    res.textureOpaquePack_plist,
 
     //music
     //res.bgMusic_mp3,
@@ -138,15 +138,15 @@ var g_maingame = [
     // FNT
     res.arial_14_fnt,
 
-    res.shipE0,
-    res.shipE1,
-    res.shipE2,
-    res.shipE3,
-    res.shipE4,
-    res.shipE5,
-    res.ship01,
-    res.ship02,
-    res.ship03,
+    //res.shipE0,
+    //res.shipE1,
+    //res.shipE2,
+    //res.shipE3,
+    //res.shipE4,
+    //res.shipE5,
+    //res.ship01,
+    //res.ship02,
+    //res.ship03,
     res.W1,
     res.W2,
     res.lvl1_map1,
@@ -159,6 +159,6 @@ var g_maingame = [
     res.hit,
     res.bg01,
     res.overBg,
-    res.enemys_plist,
-    res.enemys_png
+    //res.enemys_plist,
+    //res.enemys_png
 ];

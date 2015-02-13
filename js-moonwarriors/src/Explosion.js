@@ -37,11 +37,13 @@ var Explosion = ED.FastSprite.extend({
     animation:null,
     ctor:function () {
         var pFrame = cc.spriteFrameCache.getSpriteFrame("explosion_01.png");
-        ED._super(this,pFrame);
-        this.setAnchorPoint(0.5, 0.5);
+        this._super(pFrame);
+        //CHANGE this.setBlendFunc(cc.SRC_ALPHA, cc.ONE);
+        //this.setCompositeOperation( cc.render.CompositeOperation.lighter );
+
         this.tmpWidth = this.width;
         this.tmpHeight = this.height;
-        this.animation = ED.animationCache.getAnimation("Explosion");
+        this.animation = cc.animationCache.getAnimation("Explosion");
     },
     play:function(){
         //return;
@@ -64,10 +66,8 @@ Explosion.sharedExplosion = function () {
         var frame = cc.spriteFrameCache.getSpriteFrame(str);
         animFrames.push(frame);
     }
-    var animation = cc.Animation.create();
-    ED.setFrames(animation, animFrames);
-    ED.setDelayPerUnit(animation, 0.04);
-    ED.animationCache.addAnimation(animation, "Explosion");
+    var animation = new cc.Animation(animFrames, 0.04);
+    cc.animationCache.addAnimation(animation, "Explosion");
 };
 
 Explosion.getOrCreateExplosion = function () {

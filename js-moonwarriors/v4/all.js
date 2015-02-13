@@ -128,7 +128,7 @@
 var cc;
 (function (cc) {
     (function () {
-        console.log('%c', 'padding:140px 250px;line-height:300px;background:url(http://www.cocos2d-x.org/attachments/download/1508) no-repeat;');
+        console.log('%c', 'padding:140px 150px;line-height:300px;background:url(http://files.cocos2d-x.org/images/orgsite/logo.png) no-repeat;');
     })();
     (function () {
         var frameTime = 1000 / 60;
@@ -385,6 +385,8 @@ var cc;
         ////////////// Loader
         locale.LOADER_JSON_PARSE_ERROR = "JSON parse error while loading resource.";
         locale.WARN_FULLSCREEN_ERROR = "Full screen mode error.";
+        ////////////// audio
+        locale.ERR_SOUND_POOL_EMPTY = "Can't play, sound pool is empty.";
     })(locale = cc.locale || (cc.locale = {}));
 })(cc || (cc = {}));
 
@@ -745,6 +747,7 @@ var cc;
     var math;
     (function (math) {
         "use strict";
+        var __m0 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
         /**
          * @class cc.math.Matrix3
          *
@@ -783,6 +786,26 @@ var cc;
                 matrix[6] = 0.0;
                 matrix[7] = 0.0;
                 matrix[8] = 1.0;
+            };
+            Matrix3.translateBy = function (matrix, dtx, dty) {
+                var a = matrix[0];
+                var b = matrix[1];
+                var c = matrix[3];
+                var d = matrix[4];
+                var tx = matrix[2];
+                var ty = matrix[5];
+                matrix[2] = a * dtx + b * dty + tx;
+                matrix[5] = c * dtx + d * dty + ty;
+            };
+            Matrix3.scaleBy = function (matrix, sx, sy) {
+                matrix[0] *= sx;
+                matrix[1] *= sy;
+                matrix[3] *= sx;
+                matrix[4] *= sy;
+            };
+            Matrix3.rotateBy = function (matrix, angle) {
+                cc.math.Matrix3.setRotate(__m0, angle);
+                cc.math.Matrix3.multiply(matrix, __m0);
             };
             /**
              * Copy a source to a destination matrix
@@ -920,6 +943,30 @@ var cc;
                 m0[6] = 0;
                 m0[7] = 0;
                 m0[8] = 1;
+            };
+            Matrix3.premultiply = function (m1, m0) {
+                var mm0 = m1[0];
+                var mm1 = m1[1];
+                var mm2 = m1[2];
+                var mm3 = m1[3];
+                var mm4 = m1[4];
+                var mm5 = m1[5];
+                var tm0 = m0[0];
+                var tm1 = m0[1];
+                var tm2 = m0[2];
+                __m0[0] = tm0 * mm0 + tm1 * mm3;
+                __m0[1] = tm0 * mm1 + tm1 * mm4;
+                __m0[2] = tm0 * mm2 + tm1 * mm5 + tm2;
+                var tm3 = m0[3];
+                var tm4 = m0[4];
+                var tm5 = m0[5];
+                __m0[3] = tm3 * mm0 + tm4 * mm3;
+                __m0[4] = tm3 * mm1 + tm4 * mm4;
+                __m0[5] = tm3 * mm2 + tm4 * mm5 + tm5;
+                __m0[6] = 0;
+                __m0[7] = 0;
+                __m0[8] = 1;
+                cc.math.Matrix3.copy(__m0, m1);
             };
             /**
              * Transform a point by the matrix.
@@ -1205,6 +1252,9 @@ var cc;
                 this.z *= v;
                 return this;
             };
+            Vector.add = function (v0, v1) {
+                return new Vector().set(v1.x + v0.x, v1.y + v0.y);
+            };
             /**
              * Create a Vector with the substraction of two vectors.
              * @param v0 {cc.math.Vector}
@@ -1454,6 +1504,26 @@ var cc;
                 }
                 return tx >= this.x && ty >= this.y && tx < this.x1 && ty < this.y1;
             };
+            Object.defineProperty(Rectangle.prototype, "width", {
+                get: function () {
+                    return this.w;
+                },
+                set: function (w) {
+                    this.w = w;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Rectangle.prototype, "height", {
+                get: function () {
+                    return this.h;
+                },
+                set: function (h) {
+                    this.h = h;
+                },
+                enumerable: true,
+                configurable: true
+            });
             return Rectangle;
         })();
         math.Rectangle = Rectangle;
@@ -4439,6 +4509,8 @@ var cc;
 (function (cc) {
     var node;
     (function (_node) {
+        _node.DEFAULT_ANCHOR_POSITION = new cc.math.Vector(0, 0);
+        _node.DEFAULT_ANCHOR_TRANSFORMATION = new cc.math.Vector(0.5, 0.5);
         "use strict";
         var Vector = cc.math.Vector;
         var Rectangle = cc.math.Rectangle;
@@ -4462,6 +4534,8 @@ var cc;
             NodeDirtyFlags[NodeDirtyFlags["EVENTS_ENABLED"] = 0x0040] = "EVENTS_ENABLED";
             NodeDirtyFlags[NodeDirtyFlags["EVENTS_PRIORITY_ENABLED"] = 0x0080] = "EVENTS_PRIORITY_ENABLED";
             NodeDirtyFlags[NodeDirtyFlags["COMPOSITE_ON"] = 0x0100] = "COMPOSITE_ON";
+            NodeDirtyFlags[NodeDirtyFlags["GLOBAL_ALPHA"] = 0x0200] = "GLOBAL_ALPHA";
+            NodeDirtyFlags[NodeDirtyFlags["AABB_DIRTY"] = 0x0400] = "AABB_DIRTY";
         })(_node.NodeDirtyFlags || (_node.NodeDirtyFlags = {}));
         var NodeDirtyFlags = _node.NodeDirtyFlags;
         /**
@@ -4524,7 +4598,7 @@ var cc;
                  * @type {cc.math.Vector}
                  * @private
                  */
-                this._positionAnchor = new Vector(0, 0);
+                this._positionAnchor = _node.DEFAULT_ANCHOR_POSITION.clone();
                 /**
                  * Node's rotation angles for x and y.
                  * @member cc.node.Node#_rotation
@@ -4538,7 +4612,7 @@ var cc;
                  * @type {cc.math.Vector}
                  * @private
                  */
-                this._scale = new Vector(1.0, 1.0);
+                this._scale = new Vector(0.0, 0.0);
                 /**
                  * Node's skew values.
                  * @member cc.node.Node#_skew
@@ -4552,7 +4626,7 @@ var cc;
                  * @type {cc.math.Vector}
                  * @private
                  */
-                this._transformationAnchor = new Vector(.5, .5);
+                this._transformationAnchor = _node.DEFAULT_ANCHOR_TRANSFORMATION.clone();
                 /**
                  * Node's local transformation matrix.
                  * @member cc.node.Node#_modelViewMatrix
@@ -4589,6 +4663,13 @@ var cc;
                  * @private
                  */
                 this._alpha = 1;
+                /**
+                 * Compound parent cascade alpha value.
+                 * @member cc.node.Node#_frameAlpha
+                 * @type {number}
+                 * @private
+                 */
+                this._frameAlpha = 1;
                 /**
                  * Node's dimension.
                  * @member cc.node.Node#_contentSize
@@ -4713,7 +4794,7 @@ var cc;
                 this.rotationAngle = 0.0;
                 this._compositeOperation = 0 /* source_over */;
                 this._inputEvents = {};
-                this._flags = 4 /* REQUEST_TRANSFORM */ | 8 /* VISIBLE */;
+                this._flags = 4 /* REQUEST_TRANSFORM */ | 8 /* VISIBLE */ | 1024 /* AABB_DIRTY */;
                 // for backwards compatibility, nodes with zero dimension are shown. Not in v4, where everything must have
                 // dimension.
                 if (cc.__BACKWARDS_COMPATIBILITY__) {
@@ -4773,6 +4854,12 @@ var cc;
                 else {
                     this._flags &= ~f;
                 }
+            };
+            Node.prototype.isGlobalAlpha = function () {
+                return this.__isFlagSet(512 /* GLOBAL_ALPHA */);
+            };
+            Node.prototype.setGlobalAlpha = function (b) {
+                this.__setFlagValue(512 /* GLOBAL_ALPHA */, b);
             };
             /**
              * Set the node composite operation (or blending mode).
@@ -5056,6 +5143,7 @@ var cc;
                 this.__setWorldTransform();
                 if (this.__isFlagSet(2 /* TRANSFORMATION_DIRTY */)) {
                     this.__setFlag(16 /* INVERSE_MATRIX */);
+                    this.__setFlag(1024 /* AABB_DIRTY */);
                 }
                 return this;
             };
@@ -5218,28 +5306,36 @@ var cc;
                 }
                 this.__clearFlag(2 /* TRANSFORMATION_DIRTY */);
                 this.__setTransform();
-                // PENDING: canvas - invert y axis if transform is dirty and RENDER_ORIGIN=bottom
-                if (this.__AABBIntersectsScreen(ctx)) {
-                    if (this.__childrenMustSort()) {
-                        this.__sortChildren();
-                    }
-                    var index = 0;
-                    for (index = 0; index < this._children.length; index++) {
-                        var child = this._children[index];
-                        if (child._localZOrder < 0) {
-                            child.visit(ctx);
-                        }
-                        else {
-                            break;
-                        }
-                    }
-                    this.__draw(ctx);
-                    for (; index < this._children.length; index++) {
-                        var child = this._children[index];
+                //if (this.__AABBIntersectsScreen(ctx) || true) {
+                if (this.__childrenMustSort()) {
+                    this.__sortChildren();
+                }
+                this.__setAlphaImpl();
+                var index = 0;
+                for (index = 0; index < this._children.length; index++) {
+                    var child = this._children[index];
+                    if (child._localZOrder < 0) {
                         child.visit(ctx);
                     }
+                    else {
+                        break;
+                    }
                 }
+                this.__draw(ctx);
+                for (; index < this._children.length; index++) {
+                    var child = this._children[index];
+                    child.visit(ctx);
+                }
+                //}
                 this.__clearFlag(4 /* REQUEST_TRANSFORM */);
+            };
+            Node.prototype.__setAlphaImpl = function () {
+                if (!this._parent) {
+                    this._frameAlpha = this._alpha;
+                }
+                else {
+                    this._frameAlpha = this._parent._frameAlpha * this._alpha;
+                }
             };
             /**
              * Calculate if a node is in screen bounds.
@@ -5249,9 +5345,7 @@ var cc;
              * @private
              */
             Node.prototype.__AABBIntersectsScreen = function (ctx) {
-                if (this.__isFlagSet(2 /* TRANSFORMATION_DIRTY */)) {
-                    this.__calculateBoundingBox();
-                }
+                this.calculateBoundingBox();
                 return this._AABB.intersects(0, 0, ctx.getWidth(), ctx.getHeight());
             };
             /**
@@ -5315,7 +5409,10 @@ var cc;
              * @returns {cc.node.Node}
              * @private
              */
-            Node.prototype.__calculateBoundingBox = function () {
+            Node.prototype.calculateBoundingBox = function () {
+                if (!this.__isFlagSet(1024 /* AABB_DIRTY */)) {
+                    return this._AABB;
+                }
                 var verts = this._BBVertices;
                 if (this._isAA) {
                     this.__calculateAABBVertices();
@@ -5386,7 +5483,8 @@ var cc;
                 aa.y = ymin;
                 aa.w = xmax - xmin;
                 aa.h = ymax - ymin;
-                return this;
+                this.__clearFlag(1024 /* AABB_DIRTY */);
+                return this._AABB;
             };
             /**
              * Convert a coordinate to world (screen) space.
@@ -5404,12 +5502,9 @@ var cc;
              */
             Node.prototype.__draw = function (ctx) {
                 Matrix3.setRenderingContextTransform(this._worldModelViewMatrix, ctx);
-                // webgl has inverted
-                //if ( ctx.type==="canvas" && cc.render.RENDER_ORIGIN==="bottom" ) {
-                //    ctx.transform(1,0,0,-1,0,this._contentSize.height );
-                //}
                 var compositeSet = this.__isFlagSet(256 /* COMPOSITE_ON */);
                 var prevComposite = ctx.getCompositeOperation();
+                compositeSet = compositeSet && this._compositeOperation !== prevComposite;
                 if (compositeSet) {
                     ctx.setCompositeOperation(this._compositeOperation);
                 }
@@ -5504,6 +5599,10 @@ var cc;
              * @see {cc.node.Node#visit}
              */
             Node.prototype.addChild = function (node, localZOrder) {
+                if (arguments.length > 2) {
+                    this.__legacyAddChild.apply(this, Array.prototype.slice.call(arguments));
+                    return this;
+                }
                 if (node._parent) {
                     cc.Debug.error(cc.locale.MSG_ERROR_NODE_WITH_PARENT);
                 }
@@ -5539,6 +5638,37 @@ var cc;
                 }
                 // PENDING: running behavior, onEnter and onEnterTransitionDidFinish
                 return this;
+            };
+            Node.prototype.__legacyAddChild = function (child, localZOrder, tag) {
+                localZOrder = localZOrder === undefined ? child._localZOrder : localZOrder;
+                var name, setTag = false;
+                if (typeof tag === "undefined") {
+                    tag = undefined;
+                    name = child._name;
+                }
+                else if (typeof tag === 'string') {
+                    name = tag;
+                    tag = undefined;
+                }
+                else if (typeof tag === "number") {
+                    setTag = true;
+                    name = "";
+                }
+                if (!this._children)
+                    this._children = [];
+                this._children.push(child);
+                child._localZOrder = localZOrder;
+                if (setTag)
+                    child.setTag(tag);
+                else
+                    child.setName(name);
+                child._parent = this;
+                child._orderOfArrival = _OrderOfArrival++;
+                // add scheduled actions and tasks
+                if (this.getScene() !== null) {
+                    child.setScene(this.getScene());
+                }
+                this.__setFlag(1 /* CHILDREN_SORT */);
             };
             /**
              * Change a node's z-index.
@@ -5584,8 +5714,8 @@ var cc;
                     // PENDING: call onExit() if node is running
                     if (cleanup) {
                         // do cleanup of actions and/or scheduled callbacks
-                        this._scene.stopActionsForNode(this);
-                        this._scene.unscheduleAllCallbacks(this);
+                        this.stopAllActions();
+                        this.unscheduleAllCallbacks();
                     }
                     this._children.splice(index, 1);
                     node._parent = null;
@@ -5745,7 +5875,7 @@ var cc;
              */
             Node.prototype.draw = function (ctx) {
                 if (this._color !== DEFAULT_COLOR) {
-                    ctx.globalAlpha = this._alpha;
+                    ctx.globalAlpha = this._frameAlpha;
                     ctx.setTintColor(cc.math.Color.WHITE);
                     ctx.setFillStyleColor(this._color);
                     ctx.fillRect(0, 0, this._contentSize.width, this._contentSize.height);
@@ -5798,6 +5928,9 @@ var cc;
                 if (this._scene) {
                     this._scene.stopActionsForNode(this);
                 }
+                else {
+                    this._actionsToSchedule = [];
+                }
                 return this;
             };
             /**
@@ -5826,6 +5959,9 @@ var cc;
                 if (this.__isFlagSet(128 /* EVENTS_PRIORITY_ENABLED */)) {
                     this.__clearFlag(128 /* EVENTS_PRIORITY_ENABLED */);
                     this._scene.enablePriorityEventsForNode(this);
+                }
+                for (var i = 0; i < this._children.length; i++) {
+                    this._children[i].setScene(scene);
                 }
             };
             Node.prototype.enableEvents = function (enable) {
@@ -5868,6 +6004,13 @@ var cc;
             };
             Node.prototype.isVisible = function () {
                 return this.__isFlagSet(8 /* VISIBLE */);
+            };
+            Node.prototype.cleanup = function () {
+                this.stopAllActions();
+                this.unscheduleAllCallbacks();
+                for (var i = 0; i < this._children.length; i++) {
+                    this._children[i].cleanup();
+                }
             };
             /////////////// SCHEDULER METHODS START ////////////////
             /**
@@ -5975,6 +6118,9 @@ var cc;
                 if (this._scene) {
                     this._scene.unscheduleAllCallbacks(this);
                 }
+                else {
+                    this._tasksToSchedule = [];
+                }
             };
             /**
              * Resumes all scheduled tasks and actions.
@@ -6067,6 +6213,9 @@ var cc;
                 configurable: true
             });
             Object.defineProperty(Node.prototype, "rotation", {
+                get: function () {
+                    return this.rotationAngle;
+                },
                 /**
                  * @deprecated
                  * @method cc.node.Node#set:rotation
@@ -6079,6 +6228,9 @@ var cc;
                 configurable: true
             });
             Object.defineProperty(Node.prototype, "visible", {
+                get: function () {
+                    return this.isVisible();
+                },
                 /**
                  * @deprecated
                  * @method cc.node.Node#set:visible
@@ -6094,6 +6246,7 @@ var cc;
                 set: function (a) {
                     this._positionAnchor.x = a;
                     this._transformationAnchor.x = a;
+                    this.__setFlag(4 /* REQUEST_TRANSFORM */);
                 },
                 enumerable: true,
                 configurable: true
@@ -6102,6 +6255,7 @@ var cc;
                 set: function (a) {
                     this._positionAnchor.y = a;
                     this._transformationAnchor.y = a;
+                    this.__setFlag(4 /* REQUEST_TRANSFORM */);
                 },
                 enumerable: true,
                 configurable: true
@@ -6117,6 +6271,13 @@ var cc;
             Object.defineProperty(Node.prototype, "parent", {
                 get: function () {
                     return this._parent;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Node.prototype, "children", {
+                get: function () {
+                    return this._children;
                 },
                 enumerable: true,
                 configurable: true
@@ -6137,6 +6298,26 @@ var cc;
 (function (cc) {
     var action;
     (function (_action) {
+        /**
+         * This value is a time unit divisor constant.
+         * CocosJS expects all time units to be in seconds, hence the default value of 1000.
+         * But you could easily change time unit values to milliseconds, changing this value to 1, and setting all
+         * actions/scheduler time units in millis.
+         *
+         * @member cc.action.TIMEUNITS
+         * @type {number}
+         */
+        _action.TIMEUNITS = 1000;
+        var SECONDS = 1000;
+        var MILLISECONDS = 1;
+        function setTimeReferenceInSeconds() {
+            cc.action.TIMEUNITS = SECONDS;
+        }
+        _action.setTimeReferenceInSeconds = setTimeReferenceInSeconds;
+        function setTimeReferenceInMillis() {
+            cc.action.TIMEUNITS = MILLISECONDS;
+        }
+        _action.setTimeReferenceInMillis = setTimeReferenceInMillis;
         "use strict";
         /**
          * Action internal states.
@@ -6474,8 +6655,9 @@ var cc;
              * @param duration {number}
              */
             Action.prototype.setDuration = function (duration) {
-                this._duration = duration;
-                this.setDelay(this._delayBeforeApplication);
+                this._duration = duration * _action.TIMEUNITS;
+                //this.setDelay(this._delayBeforeApplication);
+                this.__updateDuration();
                 return this;
             };
             /**
@@ -6486,9 +6668,21 @@ var cc;
              * @returns {cc.action.Action}
              */
             Action.prototype.setDelay = function (d) {
-                this._delayBeforeApplication = d;
+                this._delayBeforeApplication = d * _action.TIMEUNITS;
                 this.__updateDuration();
                 return this;
+            };
+            /**
+             * Update this Action's duration.
+             * This must be done when a sub Action is updated or when delay times or duration itself have changed.
+             * @method cc.action.Action#__updateDuration
+             * @private
+             */
+            Action.prototype.__updateDuration = function () {
+                this._startTime = this._delayBeforeApplication + (this._chainAction ? this._chainAction._startTime + this._chainAction.getDuration() : 0);
+                if (this._parentSequence) {
+                    this._parentSequence.__updateDuration();
+                }
             };
             /**
              * Restart an action's application.
@@ -6543,7 +6737,7 @@ var cc;
              */
             Action.prototype.setRepeatTimes = function (repeatTimes, obj) {
                 this._repeatTimes = repeatTimes;
-                this._delayAfterApplication = (obj && obj.withDelay) || 0;
+                this._delayAfterApplication = (obj && obj.withDelay * _action.TIMEUNITS) || 0;
                 return this;
             };
             /**
@@ -6554,6 +6748,15 @@ var cc;
              */
             Action.prototype.setRepeatForever = function (obj) {
                 return this.setRepeatTimes(Number.MAX_VALUE, obj);
+            };
+            /**
+             *
+             * @method cc.action.Action#repeatForever
+             * @deprecated
+             * @returns {Action}
+             */
+            Action.prototype.repeatForever = function () {
+                return this.setRepeatForever();
             };
             /**
              * Register a callback notification function fired whenever the Action starts applying.
@@ -6660,7 +6863,7 @@ var cc;
              * @returns {cc.action.Action}
              */
             Action.prototype.setDelayAfterApplication = function (d) {
-                this._delayAfterApplication = d;
+                this._delayAfterApplication = d * _action.TIMEUNITS;
                 return this;
             };
             /**
@@ -6680,18 +6883,6 @@ var cc;
             Action.prototype.setInterpolator = function (interpolator) {
                 this._interpolator = interpolator;
                 return this;
-            };
-            /**
-             * Update this Action's duration.
-             * This must be done when a sub Action is updated or when delay times or duration itself have changed.
-             * @method cc.action.Action#__updateDuration
-             * @private
-             */
-            Action.prototype.__updateDuration = function () {
-                this._startTime = this._delayBeforeApplication + (this._chainAction ? this._chainAction._startTime + this._chainAction.getDuration() : 0);
-                if (this._parentSequence) {
-                    this._parentSequence.__updateDuration();
-                }
             };
             /**
              * Convert time into a normalized value in the range of the application duration.
@@ -6771,6 +6962,7 @@ var cc;
              * @param node {cc.node.Node}  node the action is being applied to.
              */
             Action.prototype.step = function (delta, node) {
+                delta *= cc.action.TIMEUNITS;
                 this._currentTime += delta * this._speed;
                 this.__stepImpl(delta, this._currentTime, node);
             };
@@ -6925,8 +7117,8 @@ var cc;
              * @returns {cc.action.Action}
              */
             Action.prototype.timeInfo = function (delay, duration, interpolator) {
+                this._duration = duration * _action.TIMEUNITS;
                 this.setDelay(delay);
-                this._duration = duration;
                 if (typeof interpolator !== "undefined") {
                     this._interpolator = interpolator;
                 }
@@ -7124,7 +7316,10 @@ var cc;
              * @private
              */
             Action.prototype.__genericCloneProperties = function (copy) {
-                copy.setInterpolator(this._interpolator).setReversedTime(this._reversedTime).setRelative(this._relativeAction).timeInfo(this._startTime, this._duration).setDelayAfterApplication(this.getDelayAfterApplication()).__setOwner(this.getOwner()).setInterpolator(this._interpolator).setSpeed(this.getSpeed()).setRepeatTimes(this._repeatTimes);
+                copy.setInterpolator(this._interpolator).setReversedTime(this._reversedTime).__setOwner(this.getOwner()).setSpeed(this.getSpeed()).setRepeatTimes(this._repeatTimes).setRelative(this._relativeAction);
+                copy._startTime = this._startTime;
+                copy._duration = this._duration;
+                copy._delayAfterApplication = this._delayAfterApplication;
                 // explictly copy callbacks this way. Sequence overwrites onRepeat.
                 copy._onStart = this._onStart;
                 copy._onEnd = this._onEnd;
@@ -7731,6 +7926,9 @@ var cc;
                 if (this._relativeAction && !this._fromValuesSet) {
                     this._startAlpha = 0;
                 }
+                else if (!this._fromValuesSet) {
+                    this._startAlpha = node._alpha;
+                }
             };
             /**
              * {@link cc.action.Action#initWithTarget}
@@ -7738,7 +7936,7 @@ var cc;
              * @override
              */
             AlphaAction.prototype.initWithTarget = function (node) {
-                this._originalAlpha = node._color._color[3];
+                this._originalAlpha = node._alpha;
                 this.solveInitialValues(node);
             };
             /**
@@ -8671,7 +8869,7 @@ var cc;
                             this._status = 4 /* ENDED */;
                             for (var i = 0; i < this._actions.length; i++) {
                                 this._actions[i]._currentTime = (this._actions[i]._currentTime + delta);
-                                this._actions[i].__stepImpl(1, time, node);
+                                this._actions[i].__stepImpl(1 / cc.action.TIMEUNITS, time, node);
                             }
                             this.__actionApply(time, node);
                             if (this._onEnd) {
@@ -9085,7 +9283,7 @@ var cc;
              * @return {number} Applied transparency value.
              */
             AnimateAction.prototype.update = function (normalizedTime, target) {
-                var index = (normalizedTime * (this._animation.getSize() - 1)) >> 0;
+                var index = ((normalizedTime * this._animation.getSize()) | 0) % this._animation.getSize();
                 if (index >= 0 && index < this._animation.getSize()) {
                     target.setSpriteFrame(this._animation.getSpriteFrameAtIndex(index));
                 }
@@ -9097,9 +9295,9 @@ var cc;
              * @method cc.action.AnimateAction#getOneRepetitionDuration
              * @returns {number}
              */
-            AnimateAction.prototype.getOneRepetitionDuration = function () {
-                return (this._animation.getDuration() + this._delayAfterApplication) * this._speed;
-            };
+            //getOneRepetitionDuration():number {
+            //    return ( this._animation.getDuration() + this._delayAfterApplication ) * this._speed * cc.action.TIMEUNITS;
+            //}
             /**
              * This method does nothing.
              * {@link cc.action.Action#solveInitialValues}
@@ -9628,7 +9826,7 @@ var cc;
                  * This naive operation, forces chain solve.
                  * BUGBUG refactor.
                  */
-                a.setDelay(a._startTime);
+                a.setDelay(a._startTime / cc.action.TIMEUNITS);
                 return a;
             };
             ActionInfo.prototype.actionMove = function () {
@@ -9848,9 +10046,13 @@ var cc;
             };
             /**
              * Execute all scheduled Actions in this ActionManager.
+             * The elapsed time is translated into the desired game time units.
+             * @see cc.action.TIMEUNITS
              * @method cc.action.ActionManager#step
+             * @param elapsedTime {number} milliseconds.
              */
             ActionManager.prototype.step = function (elapsedTime) {
+                //elapsedTime/= cc.action.TIMEUNITS;
                 var i;
                 var someActionsFinished = false;
                 // prevent that added actions from callbacks from messing around.
@@ -10082,7 +10284,7 @@ var cc;
                 }
             };
             SchedulerQueueTask.prototype.__doCallCallback = function (elapsedTime) {
-                this._callback.call(this._target, elapsedTime, this._target);
+                this._callback.call(this._target, elapsedTime / cc.action.TIMEUNITS, this._target);
             };
             /**
              * Pause the task. If in this state, the task is not fired.
@@ -10198,9 +10400,9 @@ var cc;
             SchedulerQueue.createSchedulerTask = function (target, callback, interval, repeat, delay) {
                 var task = new SchedulerQueueTask();
                 task._target = target;
-                task._delay = delay || 0;
+                task._delay = (delay || 0) * cc.action.TIMEUNITS;
                 task._callback = callback;
-                task._interval = interval || 0;
+                task._interval = (interval || 0) * cc.action.TIMEUNITS;
                 task._repeat = typeof repeat !== "undefined" ? repeat : Number.MAX_VALUE;
                 task._status = 0 /* RUNNING */;
                 return task;
@@ -10231,6 +10433,8 @@ var cc;
                 }
                 else {
                     task._interval = worktask._interval;
+                    // in case it is paused.
+                    task._status = 0 /* RUNNING */;
                 }
             };
             /**
@@ -10312,6 +10516,20 @@ var cc;
                 }
             };
             /**
+             * End a task for a target.
+             * @param target {object}
+             * @param callback {cc.action.SchedulerTaskCallback}
+             */
+            SchedulerQueue.prototype.endTask = function (target, callback) {
+                for (var i = 0; i < this._tasks.length; i++) {
+                    var task = this._tasks[i];
+                    if (task._target === target && task._callback === callback) {
+                        task.end();
+                        return;
+                    }
+                }
+            };
+            /**
              * Resume a paused task for a target. If it was not paused, nothing happens.
              * @method cc.action.SchedulerQueue#resumeTask
              * @param target {object}
@@ -10354,12 +10572,14 @@ var cc;
             };
             /**
              * Unschedule a concrete task for a target.
+             * Unschedule means set it as ended, w/o further execution.
              * @method cc.action.SchedulerQueue#unscheduleCallbackForTarget
              * @param target {object}
              * @param callback {cc.action.SchedulerTaskCallback}
              */
             SchedulerQueue.prototype.unscheduleCallbackForTarget = function (target, callback) {
-                this.pauseTask(target, callback);
+                //this.pauseTask(target,callback);
+                this.endTask(target, callback);
             };
             /**
              * Action update.
@@ -10519,7 +10739,6 @@ var __extends = this.__extends || function (d, b) {
 /// <reference path="../action/Action.ts"/>
 /// <reference path="../action/SchedulerQueue.ts"/>
 /// <reference path="./Node.ts"/>
-/// <reference path="./Director.ts"/>
 /// <reference path="../action/ActionManager.ts"/>
 /// <reference path="../render/RenderingContext.ts"/>
 /// <reference path="../input/InputManager.ts"/>
@@ -10554,7 +10773,7 @@ var cc;
          *
          * <li>Scenes have no parent Node. This means that a call to <code>enumerateChildren</code> will take a Scene as the
          * root search point.
-         * <li>An Scene logical parent is a Director object. Scenes have a Director instance in _director variable.
+         * <li>An Scene logical parent is a Director object. Scenes have a Director instance in _parent variable.
          *
          * <p>
          *     Scenes are the source point for input routing to the nodes it contains. It contains two members:
@@ -10564,6 +10783,17 @@ var cc;
          *      <li>_priorityTree: artificial priority were nodes are sorted by value. lower value means higher priority.
          *     </ul>
          *     Each time a scene is set as running by a director, the InputSystem sets that scene as input target.
+         *
+         * <p>
+         *     One important thing about scenes is that they contain an ActionManager which at the same time, manages a
+         *     Scheduler.
+         *     Scheduling actions or tasks for a Node is as straighforward as calling <code>runAction</code> or
+         *     <code>schedule|scheduleUpdate</code>.
+         *     These methods expect a time parameter for scheduling, which by default is in seconds. The engine will internally
+         *     treat all time measures in milliseconds (makes sense since the animation loop is scheduled every 16ms approx),
+         *     but the developer can instrument to set time measurements in seconds (default) by calling
+         *     <code>cc.action.setTimeReferenceInSeconds</code> or milliseconds <code>setTimeReferenceInMillis</code>.
+         *     Callback notifications with a time parameter will be in the developer desired time units.
          *
          */
         var Scene = (function (_super) {
@@ -10609,13 +10839,6 @@ var cc;
                  * @private
                  */
                 this._onExitTransitionDidStart = null;
-                /**
-                 * Director reference this scene belongs to.
-                 * @member cc.node.Scene#_director
-                 * @type {cc.node.Director}
-                 * @private
-                 */
-                this._director = null;
                 this._scheduler = null;
                 this._sceneGraphPriorityTree = null;
                 this._priorityTree = null;
@@ -10623,6 +10846,7 @@ var cc;
                 this._actionManager.scheduleActionForNode(null, this._scheduler);
                 this._sceneGraphPriorityTree = new cc.input.SceneGraphInputTreeNode(this);
                 this._priorityTree = [];
+                this.setGlobalAlpha(true);
                 this.setPositionAnchor(0, 0);
             }
             Scene.prototype.enableEvents = function (enable) {
@@ -10696,6 +10920,8 @@ var cc;
             /**
              * Increment scene's timeline.
              * This time is local to this scene, and independent to other Scene's time.
+             * This local time is handled by the Scene's ActionManager, which translate the delta milliseconds into
+             * the desired game time measurement unit, which are seconds by default.
              * @method cc.node.Scene#step
              * @param delta {number} elapsed time in milliseconds.
              * @param ctx {cc.render.RenderingContext} where node's will render.
@@ -10812,45 +11038,6 @@ var cc;
             Scene.prototype.setParent = function (node) {
                 return this;
             };
-            /**
-             * Set Scene's Director reference.
-             * Do not call directly.
-             * @method cc.node.Scene#setDirector
-             * @param node {cc.node.Director}
-             * @returns {cc.node.Scene}
-             */
-            Scene.prototype.setDirector = function (node) {
-                this._director = node;
-                return this;
-            };
-            /**
-             * Get Scene's director reference.
-             * @method cc.node.Scene#getDirector
-             * @returns {cc.node.Director}
-             */
-            Scene.prototype.getDirector = function () {
-                return this._director;
-            };
-            Object.defineProperty(Scene.prototype, "director", {
-                /**
-                 * Director getter.
-                 * @name cc.node.Scene#get:director
-                 * @returns {cc.node.Director}
-                 */
-                get: function () {
-                    return this._director;
-                },
-                /**
-                 * Director setter.
-                 * @name cc.node.Scene#set:director
-                 * @param v {cc.node.Director}
-                 */
-                set: function (v) {
-                    this._director = v;
-                },
-                enumerable: true,
-                configurable: true
-            });
             /**
              * Reset this scene's properties.
              * Needed if the scene is managed by a Transition since position/scale/rotate can be changed.
@@ -11263,6 +11450,13 @@ var cc;
             Director.prototype.addToDOM = function () {
                 this._renderer.addToDOM();
             };
+            Director.prototype.__sceneExitedDirector = function (scene) {
+                if (scene) {
+                    scene.callOnExit();
+                    scene.cleanup();
+                    scene._parent = null;
+                }
+            };
             /**
              * Run a Scene.
              * Optionally use a transition for switching between scenes.
@@ -11270,29 +11464,39 @@ var cc;
              * @param scene {cc.node.Scene}
              * @param transition {cc.transition.Transition}
              */
-            Director.prototype.runScene = function (scene, transition) {
+            Director.prototype.runScene = function (scene_or_transition, transition) {
                 var _this = this;
+                var scene;
+                if (scene_or_transition instanceof Scene) {
+                    scene = scene_or_transition;
+                }
+                else if (scene_or_transition instanceof cc.transition.Transition) {
+                    // v3 style call
+                    transition = scene_or_transition;
+                    scene = transition._sceneIn;
+                    if (!scene) {
+                        throw "director.runAction(transition) has no scene set.";
+                    }
+                }
+                else {
+                    throw "Director.runScene with wrong object type.";
+                }
                 // wtf. zero sized containers should have no content.
                 // the scene-graph will discard them immediately. This code here for backwards compatibility only.
                 if (scene.width === 0 || scene.height === 0) {
                     var pw = this.getRenderer()._preferredUnits;
                     scene.setContentSize(pw.width, pw.height);
                 }
+                scene._parent = this;
                 // the renderer will check whether it is already added.
                 this.addToDOM();
-                if (this._scenes.indexOf(scene) !== -1) {
-                    Debug.error(Locale.ERR_RUNNING_ALREADY_EXISTING_SCENE);
-                    return;
-                }
-                this._scenes.push(scene);
-                // only one scene, then start animation.
-                if (this._scenes.length === 1) {
-                    this.startAnimation();
-                }
                 // if there's a transition, let the transition handle onExit.
                 if (typeof transition !== "undefined") {
                     this._exitingScene = this._currentScene;
                     transition.initialize(scene, this._currentScene).onDirectorTransitionEnd(function (tr) {
+                        if (_this._exitingScene) {
+                            _this.__sceneExitedDirector(_this._exitingScene);
+                        }
                         _this._exitingScene = null;
                     });
                 }
@@ -11300,20 +11504,18 @@ var cc;
                     // if not, and there's a current scene
                     if (this._currentScene) {
                         // call onExit.
-                        this._currentScene.callOnExit();
-                    }
-                    if (this._exitingScene !== null) {
-                        this._exitingScene._parent = null;
-                        this._exitingScene = null;
+                        this.__sceneExitedDirector(this._currentScene);
                     }
                     // scene entered w/o transition.
                     scene.callOnEnter();
                 }
                 this._currentScene = scene;
-                this._currentScene._parent = this;
                 cc.input.MouseInputManager.enableInputForScene(scene);
                 // check for valid orientation.
                 this._renderer.checkOrientation();
+                if (this._status !== 1 /* RUNNING */) {
+                    this.startAnimation();
+                }
             };
             /**
              * Push a new running scene on top of the stack.
@@ -11321,6 +11523,11 @@ var cc;
              * @param scene {cc.node.Scene}
              */
             Director.prototype.pushScene = function (scene) {
+                if (this._scenes.indexOf(scene) !== -1) {
+                    Debug.error(Locale.ERR_RUNNING_ALREADY_EXISTING_SCENE);
+                    return;
+                }
+                this._scenes.push(scene);
                 this.runScene(scene);
             };
             /**
@@ -11334,7 +11541,7 @@ var cc;
                     return;
                 }
                 var exitScene = this._scenes.pop();
-                exitScene.callOnExit();
+                this.__sceneExitedDirector(exitScene);
                 if (this._scenes.length > 0) {
                     this._currentScene = this._scenes[this._scenes.length - 1];
                     this._currentScene.callOnEnter();
@@ -11448,13 +11655,13 @@ var cc;
                 // At any given moment, as much as two scenes can be active.
                 // If a transition is in place, two scenes will be active.
                 // If not, only one scene is active.
-                this._scenesActionManager.step(deltaTime);
+                this._scenesActionManager.step(deltaTime / cc.action.TIMEUNITS);
                 // do current scene's visit when
                 // transitions end.
                 if (this._exitingScene) {
-                    this._exitingScene.step(deltaTime, ctx);
+                    this._exitingScene.step(deltaTime / cc.action.TIMEUNITS, ctx);
                 }
-                this._currentScene.step(deltaTime, ctx);
+                this._currentScene.step(deltaTime / cc.action.TIMEUNITS, ctx);
                 if (this._renderer.flush) {
                     this._renderer.flush();
                 }
@@ -11468,7 +11675,6 @@ var cc;
             Director.prototype.createScene = function () {
                 var scene = new Scene();
                 scene.setContentSize(this._contentSize.width, this._contentSize.height);
-                scene.setDirector(this);
                 return scene;
             };
             /**
@@ -11594,6 +11800,12 @@ var cc;
             Texture2D.prototype.isWebGLEnabled = function () {
                 return this._glId !== null;
             };
+            Texture2D.prototype.release = function () {
+                if (this._glId && this._webglState) {
+                    this._webglState._gl.deleteTexture(this._glId);
+                    this._glId = null;
+                }
+            };
             /**
              * Turn an Image texture into a WebGL Texture.
              * The Image object reference will be set to null (gc friendly).
@@ -11711,8 +11923,8 @@ var cc;
         (function (_sprite) {
             var Vector = cc.math.Vector;
             var Rectangle = cc.math.Rectangle;
-            function __createSpriteFrame(from, x, y, w, h, name, rotated) {
-                var frame = from.createSubSpriteFrame(parseFloat(x), parseFloat(y), parseFloat(w), parseFloat(h), name);
+            function __createSpriteFrame(from, x, y, w, h, name, rotated, offsetx, offsety) {
+                var frame = from.createSubSpriteFrame(parseFloat(x), parseFloat(y), parseFloat(w), parseFloat(h), name, offsetx, offsety);
                 frame.rotated = rotated;
                 return frame;
             }
@@ -11752,6 +11964,14 @@ var cc;
                      * @private
                      */
                     this._offset = new Vector();
+                    /**
+                     * Displacement to add to position the spriteframe on screen.
+                     * Nothing to do with uv coords.
+                     * @member cc.node.sprite.SpriteFrame#_offsetFromCenter
+                     * @type {cc.math.Vector}
+                     * @private
+                     */
+                    this._offsetFromCenter = null;
                     /**
                      * Is the frame rotated ?. Not by default.
                      * @member cc.node.sprite.SpriteFrame#_rotated
@@ -11843,7 +12063,7 @@ var cc;
                  * @returns {SpriteFrame} a new SubSpriteFrame created from this one or null if the supplied rect does not
                  *  intersect this SpriteFrame's rect.
                  */
-                SpriteFrame.prototype.createSubSpriteFrame = function (x, y, w, h, name) {
+                SpriteFrame.prototype.createSubSpriteFrame = function (x, y, w, h, name, centerOffsetX, centerOffsetY) {
                     var newRect = new Rectangle(x, y, w, h);
                     newRect.translate(this._rect.x, this._rect.y);
                     if (this._rect.intersectsWith(newRect)) {
@@ -11851,9 +12071,19 @@ var cc;
                         sf._name = name;
                         sf._parent = this;
                         sf.setOffset(this._offset.x + this._rect.x, this._offset.y + this._rect.y);
+                        sf.setOffsetFromCenter(centerOffsetX || 0, centerOffsetY || 0);
                         return sf;
                     }
                     return null;
+                };
+                SpriteFrame.prototype.needsSpecialMatrix = function () {
+                    return this._offsetFromCenter !== null || this._rotated;
+                };
+                SpriteFrame.prototype.setOffsetFromCenter = function (x, y) {
+                    if (this._offsetFromCenter === null) {
+                        this._offsetFromCenter = new Vector(0, 0);
+                    }
+                    this._offsetFromCenter.set(x, y);
                 };
                 SpriteFrame.prototype.createSubSpriteFrames = function (rows, columns) {
                     var sfwidth = this._rect.w / columns;
@@ -11939,33 +12169,8 @@ var cc;
                             this._texture.__setAsGLTexture(ctx._webglState);
                             this.__calculateNormalizedRect();
                         }
-                        ctx.batchGeometryWithSprite(sprite, rotated);
                     }
-                    else {
-                        this.__draw(ctx, sprite.flippedX, sprite.flippedY, sprite.width, sprite.height);
-                    }
-                };
-                SpriteFrame.prototype.__draw = function (ctx, flippedX, flippedY, w, h) {
-                    var x = 0;
-                    var y = 0;
-                    if (flippedX && flippedY) {
-                        ctx.translate(w, h);
-                        ctx.scale(-1, -1);
-                    }
-                    else if (flippedX) {
-                        ctx.translate(w, 0);
-                        ctx.scale(-1, 1);
-                    }
-                    else if (flippedY) {
-                        ctx.translate(0, h);
-                        ctx.scale(1, -1);
-                    }
-                    if (this._rotated) {
-                        ctx.translate(w / 2, h / 2);
-                        ctx.rotate(-Math.PI / 2);
-                        ctx.translate(-w / 2, -h / 2);
-                    }
-                    ctx.drawTexture(this._texture, this._rect.x, this._rect.y, this._rect.w, this._rect.h, 0, 0, w, h);
+                    ctx.drawTexture(this._texture, this._rect.x, this._rect.y, this._rect.w, this._rect.h, 0, 0, sprite.width, sprite.height);
                 };
                 /**
                  * Create a set of new SpriteFrames from this SpriteFrame area, and defined by a JSON object.
@@ -11985,7 +12190,7 @@ var cc;
                     for (var element in map) {
                         if (map.hasOwnProperty(element)) {
                             var frameRect = map[element].frame;
-                            frames.push(__createSpriteFrame(this, frameRect.x, frameRect.y, frameRect.w, frameRect.h, element, map[element].rotated));
+                            frames.push(__createSpriteFrame(this, frameRect.x, frameRect.y, frameRect.w, frameRect.h, element, map[element].rotated, 0, 0));
                         }
                     }
                     return frames;
@@ -12012,10 +12217,23 @@ var cc;
                                 var fis = fi.substring(1, fi.length - 1).split('},{');
                                 var xy = fis[0].split(',');
                                 var wh = fis[1].split(',');
-                                ret.push(__createSpriteFrame(this, parseFloat(xy[0]), parseFloat(xy[1]), parseFloat(wh[0]), parseFloat(wh[1]), id, frameInfo.rotated));
+                                // frame info offset {0,0}
+                                var foffset = frameInfo.offset.substring(1, fi.length - 1).split('},{');
+                                var offsetxy = foffset[0].split(',');
+                                // WFT!!!
+                                // the file format specifies if rotated, the frame size in inverted.
+                                var w, h;
+                                w = parseFloat(frameInfo.rotated ? wh[1] : wh[0]);
+                                h = parseFloat(frameInfo.rotated ? wh[0] : wh[1]);
+                                var ox, oy;
+                                //ox= parseFloat(frameInfo.rotated ? offsetxy[1] : offsetxy[0]);
+                                //oy= parseFloat(frameInfo.rotated ? offsetxy[0] : offsetxy[1]);
+                                ox = parseFloat(offsetxy[0]);
+                                oy = parseFloat(offsetxy[1]);
+                                ret.push(__createSpriteFrame(this, parseFloat(xy[0]), parseFloat(xy[1]), w, h, id, frameInfo.rotated, ox, oy));
                             }
                             else {
-                                ret.push(__createSpriteFrame(this, frameInfo.x, frameInfo.y, frameInfo.width, frameInfo.height, id, frameInfo.rotated));
+                                ret.push(__createSpriteFrame(this, frameInfo.x, frameInfo.y, frameInfo.width, frameInfo.height, id, frameInfo.rotated, 0, 0));
                             }
                         }
                     }
@@ -12095,7 +12313,7 @@ var cc;
                      * @type {number}
                      * @private
                      */
-                    this._delayPerUnit = 150;
+                    this._delayPerUnit = 150 / cc.action.TIMEUNITS;
                     /**
                      * Animation name. By default will be "animationXXX" where XXX is an index sequence value.
                      * @member cc.node.sprite.Animation#_name
@@ -12252,6 +12470,7 @@ var __extends = this.__extends || function (d, b) {
 /// <reference path="../math/Color.ts"/>
 /// <reference path="../math/Point.ts"/>
 /// <reference path="../math/Rectangle.ts"/>
+/// <reference path="../math/Matrix3.ts"/>
 /// <reference path="../render/RenderingContext.ts"/>
 /// <reference path="../render/DecoratedWebGLRenderingContext.ts"/>
 /// <reference path="../render/Texture2D.ts"/>
@@ -12268,6 +12487,7 @@ var cc;
         var Node = cc.node.Node;
         var Texture2D = cc.render.Texture2D;
         var SpriteFrame = cc.node.sprite.SpriteFrame;
+        var __m0 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
         /**
          * @class cc.node.Sprite
          * @extends cc.node.Node
@@ -12284,18 +12504,18 @@ var cc;
                 _super.call(this);
                 /**
                  * Set this frame horizontally flipped.
-                 * @member cc.node.Sprite#flippedX
+                 * @member cc.node.Sprite#_flippedX
                  * @type {boolean}
                  * @private
                  */
-                this.flippedX = false;
+                this._flippedX = false;
                 /**
                  * Set this frame horizontally flipped.
-                 * @member cc.node.Sprite#flippedY
+                 * @member cc.node.Sprite#_flippedY
                  * @type {boolean}
                  * @private
                  */
-                this.flippedY = false;
+                this._flippedY = false;
                 /**
                  * @union
                  * @type {cc.render.Texture2D|cc.node.sprite.SpriteFrame}
@@ -12303,6 +12523,15 @@ var cc;
                  */
                 this._spriteFrame = null;
                 this._resizeOnSpriteFrameSet = true;
+                this._spriteMatrix = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+                this._spriteMatrixDirty = false;
+                this._spriteMatrixSet = false;
+                this.__init(ddata, rect);
+            }
+            Sprite.create = function (d) {
+                return new cc.node.Sprite(d);
+            };
+            Sprite.prototype.__init = function (ddata, rect) {
                 if (ddata instanceof cc.node.sprite.SpriteFrame) {
                     // V3 call.
                     this.setSpriteFrame(ddata);
@@ -12310,7 +12539,7 @@ var cc;
                 }
                 else if (ddata instanceof cc.render.Texture2D) {
                     // V3 call
-                    this.setSpriteFrame(new SpriteFrame(ddata, arguments[2]));
+                    this.setSpriteFrame(new SpriteFrame(ddata, arguments[1]));
                     cc.Debug.warn(cc.locale.WARN_SPRITE_CONSTRUCTOR_DEPRECATED_CALL);
                 }
                 else if (typeof ddata === "string") {
@@ -12341,12 +12570,10 @@ var cc;
                         }
                     }
                 }
-            }
-            Sprite.create = function (d) {
-                return new cc.node.Sprite(d);
             };
             /**
              * Backwards compatibility method.
+             * Never use directly.
              * ugh!.
              *
              * @param url
@@ -12355,9 +12582,9 @@ var cc;
              */
             Sprite.prototype.__createFromURL = function (url, rect) {
                 // me sangran los ojos poniendo esto aqui !!!
+                var resource = cc.plugin.asset.AssetManager._resources[url] || null;
                 // resource exists in the backwards compatibility resources list ?.
-                if (cc.plugin.asset.AssetManager._resources) {
-                    var resource = cc.plugin.asset.AssetManager._resources[url];
+                if (resource) {
                     // if not texture associated, create texture and main sprite frame
                     if (!cc.plugin.asset.AssetManager.getTexture(url)) {
                         cc.plugin.asset.AssetManager.addImage(resource, url);
@@ -12372,6 +12599,7 @@ var cc;
                     new cc.plugin.loader.Loader({
                         resources: [url]
                     }).startLoading(function finished(resources) {
+                        cc.plugin.asset.AssetManager.mergeResources(resources);
                         var sf = new SpriteFrame(new Texture2D(resources[url], url));
                         if (rect) {
                             sf = sf.createSubSpriteFrame(rect.x, rect.y, rect.w, rect.h, url);
@@ -12388,7 +12616,7 @@ var cc;
              */
             Sprite.prototype.draw = function (ctx) {
                 if (this._spriteFrame) {
-                    ctx.globalAlpha = this._alpha;
+                    ctx.globalAlpha = this._frameAlpha;
                     ctx.setTintColor(this._color);
                     //if ( ctx.type==="canvas" && cc.render.RENDER_ORIGIN==="bottom" ) {
                     //    ctx.translate( 0, this._contentSize.height );
@@ -12408,6 +12636,49 @@ var cc;
                     if (this._resizeOnSpriteFrameSet) {
                         this.setContentSize(s._rect.w, s._rect.h);
                     }
+                    this._spriteMatrixDirty = true;
+                }
+            };
+            Sprite.prototype.__createMatrix = function () {
+                var w = this.width;
+                var h = this.height;
+                this._spriteMatrixSet = false;
+                cc.math.Matrix3.identity(this._spriteMatrix);
+                if (this._flippedX && this._flippedY) {
+                    cc.math.Matrix3.translateBy(this._spriteMatrix, w, h);
+                    cc.math.Matrix3.scaleBy(this._spriteMatrix, -1, -1);
+                    this._spriteMatrixSet = true;
+                }
+                else if (this._flippedX) {
+                    cc.math.Matrix3.translateBy(this._spriteMatrix, w, 0);
+                    cc.math.Matrix3.scaleBy(this._spriteMatrix, -1, 1);
+                    this._spriteMatrixSet = true;
+                }
+                else if (this._flippedY) {
+                    cc.math.Matrix3.translateBy(this._spriteMatrix, 0, h);
+                    cc.math.Matrix3.scaleBy(this._spriteMatrix, 1, -1);
+                    this._spriteMatrixSet = true;
+                }
+                if (this._spriteFrame.needsSpecialMatrix()) {
+                    cc.math.Matrix3.translateBy(this._spriteMatrix, this._spriteFrame._offsetFromCenter.x, this._spriteFrame._offsetFromCenter.y);
+                    if (this._spriteFrame._rotated) {
+                        cc.math.Matrix3.translateBy(this._spriteMatrix, w / 2, h / 2);
+                        cc.math.Matrix3.rotateBy(this._spriteMatrix, Math.PI / 2);
+                        cc.math.Matrix3.translateBy(this._spriteMatrix, -w / 2, -h / 2);
+                    }
+                    this._spriteMatrixSet = true;
+                }
+                this._spriteMatrixDirty = false;
+            };
+            Sprite.prototype.__setLocalTransform = function () {
+                _super.prototype.__setLocalTransform.call(this);
+                if (this.__isFlagSet(2 /* TRANSFORMATION_DIRTY */)) {
+                    if (this._spriteMatrixDirty) {
+                        this.__createMatrix();
+                    }
+                    if (this._spriteMatrixSet) {
+                        cc.math.Matrix3.multiply(this._modelViewMatrix, this._spriteMatrix);
+                    }
                 }
             };
             /**
@@ -12417,7 +12688,9 @@ var cc;
              * @returns {cc.node.Sprite}
              */
             Sprite.prototype.setFlippedX = function (f) {
-                this.flippedX = f;
+                this._flippedX = f;
+                this._spriteMatrixDirty = true;
+                this.__setFlag(2 /* TRANSFORMATION_DIRTY */);
                 return this;
             };
             /**
@@ -12427,16 +12700,47 @@ var cc;
              * @returns {cc.node.Sprite}
              */
             Sprite.prototype.setFlippedY = function (f) {
-                this.flippedY = f;
+                this._flippedY = f;
+                this._spriteMatrixDirty = true;
+                this.__setFlag(2 /* TRANSFORMATION_DIRTY */);
                 return this;
             };
             Sprite.prototype.resizeOnSpriteFrameSet = function (b) {
                 this._resizeOnSpriteFrameSet = b;
                 return this;
             };
+            Sprite.prototype.setTextureRect = function (r) {
+                if (this._spriteFrame) {
+                    this.setSpriteFrame(this._spriteFrame.createSubSpriteFrame(r.x, r.y, r.w, r.h, this._name));
+                }
+            };
+            Object.defineProperty(Sprite.prototype, "flippedX", {
+                set: function (b) {
+                    this.setFlippedX(b);
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Sprite.prototype, "flippedY", {
+                set: function (b) {
+                    this.setFlippedY(b);
+                },
+                enumerable: true,
+                configurable: true
+            });
             return Sprite;
         })(Node);
         node.Sprite = Sprite;
+        var SpriteBatchNode = (function (_super) {
+            __extends(SpriteBatchNode, _super);
+            function SpriteBatchNode(ddata, rect) {
+                _super.call(this, null);
+                this._resizeOnSpriteFrameSet = false;
+                this.__init(ddata, rect);
+            }
+            return SpriteBatchNode;
+        })(Sprite);
+        node.SpriteBatchNode = SpriteBatchNode;
     })(node = cc.node || (cc.node = {}));
 })(cc || (cc = {}));
 
@@ -12457,7 +12761,6 @@ var cc;
 (function (cc) {
     var node;
     (function (node) {
-        var Sprite = cc.node.Sprite;
         /**
          * @class cc.node.FastSprite
          * @extends cc.node.Sprite
@@ -12490,7 +12793,7 @@ var cc;
                     return;
                 }
                 if (this._spriteFrame) {
-                    ctx.globalAlpha = this._alpha;
+                    ctx.globalAlpha = this._frameAlpha;
                     ctx.setTintColor(this._color);
                     if (ctx.type === "webgl") {
                         ctx.batchGeometryWithSpriteFast(this);
@@ -12501,7 +12804,7 @@ var cc;
                 }
             };
             return FastSprite;
-        })(Sprite);
+        })(cc.node.Sprite);
         node.FastSprite = FastSprite;
     })(node = cc.node || (cc.node = {}));
 })(cc || (cc = {}));
@@ -12561,16 +12864,11 @@ var cc;
                     }
                     e.target.setStatus(1 /* PRESSED */);
                 };
-                var up = function (e) {
-                    if (e.target._status === 3 /* DISABLED */) {
-                        return;
-                    }
-                    e.target.setStatus(0 /* NORMAL */);
-                };
                 var click = function (e) {
                     if (e.target._status === 3 /* DISABLED */) {
                         return;
                     }
+                    e.target.setStatus(0 /* NORMAL */);
                     if (e.target._callback) {
                         e.target._callback();
                     }
@@ -12589,10 +12887,8 @@ var cc;
                 };
                 this.addEventListener("mousedown", down);
                 this.addEventListener("touchstart", down);
-                this.addEventListener("mouseup", up);
-                this.addEventListener("touchend", up);
+                this.addEventListener("touchend", click);
                 this.addEventListener("mouseclick", click);
-                this.addEventListener("touchclick", click);
                 this.addEventListener("mouseover", over);
                 this.addEventListener("touchover", over);
                 this.addEventListener("mouseout", out);
@@ -12606,12 +12902,20 @@ var cc;
                 this._status = 0 /* NORMAL */;
                 this.enableEvents(true);
             };
+            Button.prototype.setEnabled = function (b) {
+                if (b) {
+                    this.enable();
+                }
+                else {
+                    this.disable();
+                }
+            };
             Button.prototype.draw = function (ctx) {
                 var sf = this.__getCurrentFrame();
                 if (sf) {
-                    ctx.globalAlpha = this._alpha;
+                    ctx.globalAlpha = this._frameAlpha;
                     ctx.setTintColor(this._color);
-                    sf.__draw(ctx, false, false, this.width, this.height);
+                    sf.draw(ctx, this);
                 }
             };
             Button.prototype.init = function (obj) {
@@ -12646,7 +12950,7 @@ var cc;
         })(cc.node.Node);
         widget.Button = Button;
     })(widget = cc.widget || (cc.widget = {}));
-    function MenuItemSprite(normal, selected, disabled, callback) {
+    function MenuItemSprite(normal, selected, disabled, callback, context) {
         var button = new cc.widget.Button();
         button.setAnchorPoint(.5, .5);
         var obj = {
@@ -12659,12 +12963,76 @@ var cc;
             obj.disabled = disabled._spriteFrame;
         }
         if (callback) {
-            obj.callback = callback;
+            obj.callback = context ? callback.bind(context) : callback;
         }
         button.init(obj);
         return button;
     }
     cc.MenuItemSprite = MenuItemSprite;
+    function MenuItemLabel(label, callback) {
+        if (callback) {
+            label.enableEvents(true);
+            label.addEventListener("mouseclick", function (e) {
+                if (e.target._enabled) {
+                    callback();
+                }
+            });
+            label.addEventListener("touchend", function (e) {
+                if (e.target._enabled) {
+                    callback();
+                }
+            });
+        }
+        return label;
+    }
+    cc.MenuItemLabel = MenuItemLabel;
+    var MenuItemFont = (function (_super) {
+        __extends(MenuItemFont, _super);
+        function MenuItemFont(initializer, callback, target) {
+            var _this = this;
+            _super.call(this);
+            this._label = null;
+            this._callback = null;
+            this._enabled = true;
+            var label = new cc.widget.LabelTTF();
+            label.initialize(initializer);
+            this._label = label;
+            if (callback) {
+                this._callback = target ? callback.bind(target) : callback;
+                this._label.enableEvents(true);
+                this._label.addEventListener("mouseup", function (e) {
+                    if (_this._enabled) {
+                        _this._callback();
+                    }
+                });
+                this._label.addEventListener("touchend", function (e) {
+                    if (_this._enabled) {
+                        _this._callback();
+                    }
+                });
+            }
+            this.addChild(this._label);
+            this._label.setPositionAnchor(0, 0);
+            this.setContentSize(this._label.width, this._label.height);
+        }
+        MenuItemFont.prototype.setFontSize = function (s) {
+            this._label.setFontSize(s);
+        };
+        MenuItemFont.prototype.getFontSize = function () {
+            return this._label.getFontSize();
+        };
+        MenuItemFont.prototype.setFontName = function (name) {
+            this._label.setFont(name);
+        };
+        MenuItemFont.prototype.getFontName = function () {
+            return this._label.getFont();
+        };
+        MenuItemFont.prototype.setEnabled = function (b) {
+            this._label.setEnabled(b);
+        };
+        return MenuItemFont;
+    })(cc.node.Node);
+    cc.MenuItemFont = MenuItemFont;
     var Menu = (function (_super) {
         __extends(Menu, _super);
         function Menu() {
@@ -12676,6 +13044,10 @@ var cc;
             for (var i = 0; i < buttons.length; i++) {
                 this.addChild(buttons[i]);
             }
+            this.setPositionAnchor(0, 0);
+            var winSize = cc.director.getWinSize();
+            this.setPosition(winSize.width / 2, winSize.height / 2);
+            this.setContentSize(winSize.width, winSize.height);
         }
         Menu.prototype.alignItemsVerticallyWithPadding = function (padding) {
             this._padding = padding + this.y;
@@ -12693,9 +13065,532 @@ var cc;
                 }
             }
         };
+        Menu.prototype.alignItemsInColumns = function () {
+            var rows = [];
+            for (var i = 0; i < arguments.length; i++) {
+                rows.push(arguments[i]);
+            }
+            var height = -5;
+            var row = 0;
+            var rowHeight = 0;
+            var columnsOccupied = 0;
+            var rowColumns, tmp, len;
+            var locChildren = this._children;
+            if (locChildren && locChildren.length > 0) {
+                for (i = 0, len = locChildren.length; i < len; i++) {
+                    if (row >= rows.length)
+                        continue;
+                    rowColumns = rows[row];
+                    // can not have zero columns on a row
+                    if (!rowColumns)
+                        continue;
+                    tmp = locChildren[i].height;
+                    rowHeight = ((rowHeight >= tmp || isNaN(tmp)) ? rowHeight : tmp);
+                    ++columnsOccupied;
+                    if (columnsOccupied >= rowColumns) {
+                        height += rowHeight + 5;
+                        columnsOccupied = 0;
+                        rowHeight = 0;
+                        ++row;
+                    }
+                }
+            }
+            // check if too many rows/columns for available menu items
+            //cc.assert(!columnsOccupied, "");    //?
+            var winSize = cc.director.getWinSize();
+            row = 0;
+            rowHeight = 0;
+            rowColumns = 0;
+            var w = 0.0;
+            var x = 0.0;
+            var y = (height / 2);
+            if (locChildren && locChildren.length > 0) {
+                for (i = 0, len = locChildren.length; i < len; i++) {
+                    var child = locChildren[i];
+                    if (rowColumns == 0) {
+                        rowColumns = rows[row];
+                        w = winSize.width / (1 + rowColumns);
+                        x = w;
+                    }
+                    tmp = child.height;
+                    rowHeight = ((rowHeight >= tmp || isNaN(tmp)) ? rowHeight : tmp);
+                    child.setPosition(x - winSize.width / 2, y - tmp / 2);
+                    x += w;
+                    ++columnsOccupied;
+                    if (columnsOccupied >= rowColumns) {
+                        y -= rowHeight + 5;
+                        columnsOccupied = 0;
+                        rowColumns = 0;
+                        rowHeight = 0;
+                        ++row;
+                    }
+                }
+            }
+        };
         return Menu;
     })(cc.node.Node);
     cc.Menu = Menu;
+    var MenuItemToggle = (function (_super) {
+        __extends(MenuItemToggle, _super);
+        function MenuItemToggle() {
+            var _this = this;
+            _super.call(this);
+            this._currentOptionIndex = -1;
+            this._options = [];
+            this._callback = null;
+            this._enabled = true;
+            this.setAnchorPoint(.5, .5);
+            this.enableEvents(true);
+            this.addEventListener("mouseup", function (e) {
+                if (_this._enabled) {
+                    _this.__nextOption();
+                }
+            });
+            this.addEventListener("touchup", function (e) {
+                if (_this._enabled) {
+                    _this.__nextOption();
+                }
+            });
+            this.__init.call(this, Array.prototype.slice.call(arguments));
+        }
+        MenuItemToggle.prototype.setEnabled = function (b) {
+            this._enabled = b;
+            for (var i = 0; i < this._options.length; i++) {
+                var node = this._options[i];
+                if (typeof node.setEnabled !== "undefined") {
+                    node.setEnabled(b);
+                }
+            }
+        };
+        MenuItemToggle.prototype.initWithItems = function () {
+            this.__init.call(this, Array.prototype.slice.call(arguments));
+        };
+        MenuItemToggle.prototype.__init = function (args) {
+            var len = args.length;
+            if (typeof args[args.length - 2] === 'function') {
+                len -= 2;
+                this._callback = args[args.length - 2].bind(args[args.length - 1]);
+            }
+            else if (typeof args[args.length - 1] === 'function') {
+                len -= 1;
+                this._callback = args[args.length - 1];
+            }
+            for (var i = 0; i < len; i++) {
+                this.addItem(args[i]);
+            }
+            this.setSelectedIndex(0);
+        };
+        MenuItemToggle.prototype.addItem = function (node) {
+            node.setAnchorPoint(0.5, 0.5);
+            node.visible = false;
+            this._options.push(node);
+            this.addChild(node);
+            if (this._children.length === 1) {
+                this.setSelectedIndex(0);
+            }
+        };
+        MenuItemToggle.prototype.setCallback = function (callback) {
+            this.onClick(callback);
+        };
+        MenuItemToggle.prototype.onClick = function (callback) {
+            this._callback = callback;
+        };
+        MenuItemToggle.prototype.setSelectedIndex = function (index) {
+            if (this._options.length === 0) {
+                return;
+            }
+            index %= this._children.length;
+            if (index !== this._currentOptionIndex) {
+                if (this._currentOptionIndex !== -1) {
+                    this._options[this._currentOptionIndex].visible = false;
+                }
+                this._currentOptionIndex = index;
+                var co = this._options[this._currentOptionIndex];
+                co.setPosition(co.width / 2, co.height / 2);
+                co.visible = true;
+                this.setContentSize(co.width, co.height);
+            }
+        };
+        MenuItemToggle.prototype.__emit = function () {
+            if (this._callback) {
+                this._callback(this._currentOptionIndex !== -1 ? this._options[this._currentOptionIndex] : null);
+            }
+        };
+        MenuItemToggle.prototype.__nextOption = function () {
+            if (this._children.length === 0) {
+                return;
+            }
+            this.setSelectedIndex(this._currentOptionIndex === -1 ? 0 : this._currentOptionIndex + 1);
+            this.__emit();
+        };
+        return MenuItemToggle;
+    })(cc.node.Node);
+    cc.MenuItemToggle = MenuItemToggle;
+})(cc || (cc = {}));
+
+/**
+ * License: see license.txt file
+ */
+var __extends = this.__extends || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    __.prototype = b.prototype;
+    d.prototype = new __();
+};
+/// <reference path="../math/Dimension.ts"/>
+/// <reference path="../node/Node.ts"/>
+/// <reference path="../node/Sprite.ts"/>
+/// <reference path="../node/sprite/SpriteFrame.ts"/>
+/// <reference path="../render/RenderingContext.ts"/>
+/// <reference path="../render/Texture2D.ts"/>
+/// <reference path="../plugin/font/SpriteFont.ts"/>
+var cc;
+(function (cc) {
+    var widget;
+    (function (widget) {
+        (function (VALIGN) {
+            VALIGN[VALIGN["TOP"] = 0] = "TOP";
+            VALIGN[VALIGN["MIDDLE"] = 1] = "MIDDLE";
+            VALIGN[VALIGN["BOTTOM"] = 2] = "BOTTOM";
+        })(widget.VALIGN || (widget.VALIGN = {}));
+        var VALIGN = widget.VALIGN;
+        (function (HALIGN) {
+            HALIGN[HALIGN["LEFT"] = 0] = "LEFT";
+            HALIGN[HALIGN["CENTER"] = 1] = "CENTER";
+            HALIGN[HALIGN["RIGHT"] = 2] = "RIGHT";
+        })(widget.HALIGN || (widget.HALIGN = {}));
+        var HALIGN = widget.HALIGN;
+        /**
+         * @class cc.widget.Label
+         * @extends cc.node.Node
+         * @classdesc
+         *
+         * This object represents a label widget which simply writes text.
+         * The text is written using a SpriteFont object which must be in the AssetManager cache.
+         *
+         * The label text can be drawn freely, that is each text line will span as much width as needed (method
+         * or flow constrained by calling <code>setFlowWidth</code where the text will be drawn to a fixed width.
+         *
+         * For both methods, the label will calculate its bounds upon text or font change. You can override this behavior
+         * by calling <code>setResizeContentSize(bool)</code>
+         *
+         * The text can be multiline text separated by \n characters.
+         *
+         *
+         *
+         */
+        var Label = (function (_super) {
+            __extends(Label, _super);
+            /**
+             * Build a new LabelBM object instance.
+             * @param text {string} label text.
+             * @param fontName {string} a cc.plugin.font.SpriteFont in the AssetManager cache object name.
+             */
+            function Label(text, fontName) {
+                _super.call(this);
+                this._text = '';
+                this._textSize = null;
+                this._font = null;
+                this._resizeContentSize = true;
+                this._valign = 1 /* MIDDLE */;
+                this._halign = 1 /* CENTER */;
+                this._enabled = true;
+                this._flowWidth = 0;
+                this._text = text;
+                this._font = cc.plugin.asset.AssetManager.getSpriteFont(fontName);
+                this.__measureText();
+            }
+            Label.prototype.setResizeContentSize = function (b) {
+                this._resizeContentSize = b;
+                return this;
+            };
+            Label.prototype.__measureText = function () {
+                if (this._font) {
+                    var d = this._font.getTextSize(this._text, this._flowWidth);
+                    this._contentSize.width = this._flowWidth ? this._flowWidth : d.width;
+                    this._contentSize.height = d.height;
+                    this._textSize = d;
+                }
+            };
+            Label.prototype.setFont = function (fontName) {
+                var fn = cc.plugin.asset.AssetManager.getSpriteFont(fontName);
+                if (null !== fn) {
+                    this._font = fn;
+                    if (this._resizeContentSize) {
+                        this.__measureText();
+                    }
+                }
+            };
+            Label.prototype.setText = function (text) {
+                this._text = text;
+                if (this._resizeContentSize) {
+                    this.__measureText();
+                }
+            };
+            Label.prototype.setHAlign = function (a) {
+                this._halign = a;
+                return this;
+            };
+            Label.prototype.setVAlign = function (a) {
+                this._valign = a;
+                return this;
+            };
+            Label.prototype.draw = function (ctx) {
+                _super.prototype.draw.call(this, ctx);
+                if (this._font) {
+                    this._font.drawTextInRect(ctx, this._text, 0, 0, this._contentSize.width, this._contentSize.height, this._halign, this._valign);
+                }
+            };
+            Object.defineProperty(Label.prototype, "textAlign", {
+                get: function () {
+                    return this._halign;
+                },
+                set: function (v) {
+                    this._halign = v;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Label.prototype, "textVerticalAlign", {
+                get: function () {
+                    return this._valign;
+                },
+                set: function (v) {
+                    this._valign = v;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            /**
+             *
+             * @param text
+             * @deprecated
+             */
+            Label.prototype.setString = function (text) {
+                this.setText(text);
+            };
+            Label.prototype.setEnabled = function (e) {
+                this._enabled = e;
+            };
+            Label.prototype.flowWidth = function (f) {
+                this._flowWidth = f;
+                this.__measureText();
+                return this;
+            };
+            return Label;
+        })(cc.node.Node);
+        widget.Label = Label;
+        var __index = 0;
+        var LabelTTF = (function (_super) {
+            __extends(LabelTTF, _super);
+            function LabelTTF(initializer) {
+                _super.call(this, null);
+                this._text = null;
+                this._font = "Arial";
+                this._size = 16;
+                this._flow = false;
+                this._flowWidth = 1024;
+                this._fillColor = "#fff";
+                this._strokeColor = "#ccc";
+                this._strokeSize = 1;
+                this._fill = true;
+                this._stroke = false;
+                this._shadowBlur = 0;
+                this._shadowColor = "#ff0";
+                this._shadowOffsetX = 0;
+                this._shadowOffsetY = 0;
+                this._texture = null;
+                this._horizontalAlignment = 0 /* LEFT */;
+                this._verticalAlignment = 1 /* MIDDLE */;
+                this._enabled = true;
+                if (initializer) {
+                    this.initialize(initializer);
+                    if (initializer.text) {
+                        this.__initLabel();
+                    }
+                }
+            }
+            LabelTTF.prototype.initialize = function (init) {
+                this._text = init.text;
+                if (typeof init.font !== "undefined") {
+                    this._font = init.font;
+                }
+                ;
+                if (typeof init.size !== "undefined") {
+                    this._size = init.size;
+                }
+                ;
+                this._flow = typeof init.flowWidth !== 'undefined';
+                if (typeof init.flowWidth !== 'undefined') {
+                    this._flowWidth = init.flowWidth;
+                }
+                if (typeof init.fillColor !== 'undefined') {
+                    this._fillColor = init.fillColor;
+                }
+                if (typeof init.strokeColor !== 'undefined') {
+                    this._strokeColor = init.strokeColor;
+                }
+                if (typeof init.strokeSize !== 'undefined') {
+                    this._strokeSize = init.strokeSize;
+                }
+                if (typeof init.fill !== 'undefined') {
+                    this._fill = init.fill;
+                }
+                if (typeof init.stroke !== 'undefined') {
+                    this._stroke = init.stroke;
+                }
+                if (typeof init.shadowBlur !== 'undefined') {
+                    this._shadowBlur = init.shadowBlur;
+                }
+                if (typeof init.shadowColor !== 'undefined') {
+                    this._shadowColor = init.shadowColor;
+                }
+                if (typeof init.shadowOffsetX === 'undefined') {
+                    this._shadowOffsetX = init.shadowOffsetX;
+                }
+                if (typeof init.shadowOffsetY === 'undefined') {
+                    this._shadowOffsetY = init.shadowOffsetY;
+                }
+                if (typeof init.horizontalAlignment !== "undefined") {
+                    this._horizontalAlignment = init.horizontalAlignment;
+                }
+                if (typeof init.verticalAlignment !== "undefined") {
+                    this._verticalAlignment = init.verticalAlignment;
+                }
+                this.__initLabel();
+                return this;
+            };
+            LabelTTF.prototype.setEnabled = function (b) {
+                this._enabled = b;
+            };
+            LabelTTF.prototype.setText = function (text) {
+                if (this._text === text) {
+                    return;
+                }
+                this._text = text;
+                this.__initLabel();
+            };
+            LabelTTF.prototype.setString = function (text) {
+                this.setText(text);
+            };
+            LabelTTF.prototype.__initLabel = function () {
+                if (this._texture) {
+                    this._texture.release();
+                }
+                var canvas = document.createElement("canvas");
+                var ctx = canvas.getContext("2d");
+                this.__prepareContext(ctx);
+                var textSize = this.__getTextSize(ctx, this._text, this._flowWidth);
+                var canvas = this.__drawText(this._text, textSize);
+                var textureId = "labelTTF" + __index++;
+                this._texture = new cc.render.Texture2D(canvas, textureId);
+                this.setSpriteFrame(new cc.node.sprite.SpriteFrame(this._texture));
+            };
+            LabelTTF.prototype.__prepareContext = function (ctx) {
+                ctx.font = "" + this._size + "px " + this._font;
+                ctx.textBaseline = "top";
+                ctx.fillStyle = this._fillColor;
+                if (this._stroke) {
+                    ctx.strokeStyle = this._strokeColor;
+                    ctx.lineWidth = this._strokeSize;
+                }
+                if (this._shadowBlur) {
+                    ctx.shadowBlur = this._shadowBlur;
+                    ctx.shadowColor = this._shadowColor;
+                    ctx.shadowOffsetX = this._shadowOffsetX;
+                    ctx.shadowOffsetY = this._shadowOffsetY;
+                }
+            };
+            LabelTTF.prototype.__drawText = function (text, size) {
+                var y = 0;
+                var flowWidth = size.width;
+                var offsetX = 0;
+                var offsetY = 0;
+                if (this._stroke) {
+                    offsetX += this._strokeSize / 2;
+                    offsetY += this._strokeSize / 2;
+                    size.width += this._strokeSize;
+                }
+                if (this._shadowBlur) {
+                    size.width += this._shadowBlur + this._shadowOffsetX;
+                    size.height += this._shadowBlur + this._shadowOffsetY;
+                    offsetX += this._shadowBlur / 2 + this._shadowOffsetX;
+                    offsetY += this._shadowBlur / 2 + this._shadowOffsetY * (cc.render.RENDER_ORIGIN === "bottom" ? -1 : 1);
+                }
+                var canvas = document.createElement("canvas");
+                canvas.width = size.width;
+                canvas.height = size.height;
+                var ctx = canvas.getContext("2d");
+                this.__prepareContext(ctx);
+                y = offsetY;
+                var lines = text.split("\n");
+                for (var l = 0; l < lines.length; l++) {
+                    var x = offsetX;
+                    var words = lines[l].split(" ");
+                    for (var w = 0; w < words.length; w++) {
+                        var word = words[w] + (w < words.length - 1 ? " " : "");
+                        var wordLength = ctx.measureText(word).width;
+                        if (x + wordLength > flowWidth) {
+                            y += this._size;
+                            x = 0;
+                        }
+                        if (this._stroke) {
+                            ctx.strokeText(word, x, y);
+                        }
+                        if (this._fill) {
+                            ctx.fillText(word, x, y);
+                        }
+                        x += wordLength;
+                    }
+                    y += this._size;
+                }
+                return canvas;
+            };
+            LabelTTF.prototype.__getTextSize = function (ctx, text, flowWidth) {
+                var dim = new cc.math.Dimension();
+                flowWidth = this._flowWidth;
+                var lines = text.split("\n");
+                for (var l = 0; l < lines.length; l++) {
+                    var x = 0;
+                    var words = lines[l].split(" ");
+                    for (var w = 0; w < words.length; w++) {
+                        var word = words[w] + (w < words.length - 1 ? " " : "");
+                        var wordLength = ctx.measureText(word).width;
+                        if (x + wordLength > flowWidth) {
+                            dim.width = Math.max(dim.width, x);
+                            dim.height += this._size;
+                            x = wordLength;
+                        }
+                        else {
+                            x += wordLength;
+                        }
+                    }
+                    dim.height += this._size;
+                    dim.width = Math.max(dim.width, x);
+                }
+                if (this._flow) {
+                    dim.width = flowWidth;
+                }
+                return dim;
+            };
+            LabelTTF.prototype.getFont = function () {
+                return this._font;
+            };
+            LabelTTF.prototype.setFont = function (font) {
+                this._font = font;
+                this.__initLabel();
+            };
+            LabelTTF.prototype.setFontSize = function (s) {
+                this._size = s;
+                this.__initLabel();
+            };
+            LabelTTF.prototype.getFontSize = function () {
+                return this._size;
+            };
+            return LabelTTF;
+        })(cc.node.Sprite);
+        widget.LabelTTF = LabelTTF;
+    })(widget = cc.widget || (cc.widget = {}));
 })(cc || (cc = {}));
 
 /**
@@ -13004,7 +13899,7 @@ var cc;
              * @method cc.transition.Transition#constructor
              * @param duration {number} transition duration in milliseconds.
              */
-            function Transition(duration) {
+            function Transition(duration, scene) {
                 /**
                  * Director callback for transition end events.
                  * @member cc.transition.Transition#_transitionCallback
@@ -13035,7 +13930,19 @@ var cc;
                  * @private
                  */
                 this._interpolator = Interpolator.Linear(false, false);
+                /**
+                 * Scene to get in. This is a V3 backwards compatibility need.
+                 * In v3, Transition extends Scene.
+                 * In v4, Transition does NOT extend Scene.
+                 * To keep the director.runAction( Scene|Transition ) method signature, the transition must
+                 * be built with a target Scene in.
+                 * @member cc.transition.Transition#_sceneIn
+                 * @type {cc.node.Scene}
+                 * @private
+                 */
+                this._sceneIn = null;
                 this._duration = duration;
+                this._sceneIn = scene;
             }
             /**
              * Initialize the transition.
@@ -13126,6 +14033,42 @@ var cc;
         })(_transition.TransitionMoveDirection || (_transition.TransitionMoveDirection = {}));
         var TransitionMoveDirection = _transition.TransitionMoveDirection;
         /**
+         * @class cc.transition.TransitionFade
+         * @classdesc
+         */
+        var TransitionFade = (function (_super) {
+            __extends(TransitionFade, _super);
+            /**
+             *
+             * @param duration
+             */
+            function TransitionFade(duration, scene) {
+                _super.call(this, duration, scene);
+            }
+            TransitionFade.prototype.initialize = function (sceneIn, sceneOut) {
+                var actionIn = null;
+                var actionOut = null;
+                var director = null;
+                sceneIn.resetScene();
+                sceneIn.setAlpha(0);
+                actionIn = cc.FadeIn.create(this._duration / 1000);
+                if (this._interpolator) {
+                    actionIn.setInterpolator(this._interpolator);
+                }
+                director = sceneIn.getParent();
+                director._scenesActionManager.scheduleActionForNode(sceneIn, actionIn);
+                if (sceneOut) {
+                    sceneOut.resetScene();
+                    actionOut = cc.FadeOut.create(this._duration / 1000);
+                    director._scenesActionManager.scheduleActionForNode(sceneOut, actionOut);
+                }
+                this.__setupActionCallbacks(actionIn, actionOut);
+                return this;
+            };
+            return TransitionFade;
+        })(Transition);
+        _transition.TransitionFade = TransitionFade;
+        /**
          * @class cc.transition.TransitionMove
          * @classdesc
          *
@@ -13142,10 +14085,11 @@ var cc;
              * @method cc.transition.TransitionMove#constructor
              * @param duration {number} transition duration in milliseconds.
              * @param direction {cc.transition.TransitionMoveDirection}
+             * @param scene {cc.node.Scene}
              */
-            function TransitionMove(duration, direction) {
+            function TransitionMove(duration, direction, scene) {
                 if (direction === void 0) { direction = 0 /* LEFT */; }
-                _super.call(this, duration);
+                _super.call(this, duration, scene);
                 this.direction = direction;
             }
             /**
@@ -13181,7 +14125,7 @@ var cc;
                 if (this._interpolator) {
                     actionIn.setInterpolator(this._interpolator);
                 }
-                director = sceneIn.getDirector();
+                director = sceneIn._parent;
                 director._scenesActionManager.scheduleActionForNode(sceneIn, actionIn);
                 if (sceneOut) {
                     sceneOut.resetScene();
@@ -13201,8 +14145,8 @@ var cc;
          */
         var TransitionSlideInL = (function (_super) {
             __extends(TransitionSlideInL, _super);
-            function TransitionSlideInL(duration) {
-                _super.call(this, duration, 0 /* LEFT */);
+            function TransitionSlideInL(duration, scene) {
+                _super.call(this, duration, 0 /* LEFT */, scene);
             }
             return TransitionSlideInL;
         })(TransitionMove);
@@ -13214,8 +14158,8 @@ var cc;
          */
         var TransitionSlideInR = (function (_super) {
             __extends(TransitionSlideInR, _super);
-            function TransitionSlideInR(duration) {
-                _super.call(this, duration, 1 /* RIGHT */);
+            function TransitionSlideInR(duration, scene) {
+                _super.call(this, duration, 1 /* RIGHT */, scene);
             }
             return TransitionSlideInR;
         })(TransitionMove);
@@ -13227,8 +14171,8 @@ var cc;
          */
         var TransitionSlideInT = (function (_super) {
             __extends(TransitionSlideInT, _super);
-            function TransitionSlideInT(duration) {
-                _super.call(this, duration, 2 /* TOP */);
+            function TransitionSlideInT(duration, scene) {
+                _super.call(this, duration, 2 /* TOP */, scene);
             }
             return TransitionSlideInT;
         })(TransitionMove);
@@ -13240,8 +14184,8 @@ var cc;
          */
         var TransitionSlideInB = (function (_super) {
             __extends(TransitionSlideInB, _super);
-            function TransitionSlideInB(duration) {
-                _super.call(this, duration, 3 /* BOTTOM */);
+            function TransitionSlideInB(duration, scene) {
+                _super.call(this, duration, 3 /* BOTTOM */, scene);
             }
             return TransitionSlideInB;
         })(TransitionMove);
@@ -14218,9 +15162,7 @@ var cc;
         var shader;
         (function (shader) {
             (function () {
-                console.log("");
-                console.log("Buffers: bufferData");
-                console.log("");
+                console.log("Buffers: in bufferData mode with whole buffer.");
             })();
             var Buffer = (function () {
                 function Buffer(_gl, _type, initialValue) {
@@ -14241,11 +15183,11 @@ var cc;
                  */
                 Buffer.prototype.enableWithValue = function (v) {
                     this._gl.bindBuffer(this._type, this._buffer);
-                    if (this._prevValue !== v) {
-                        this._gl.bufferData(this._type, v, this._gl.STREAM_DRAW);
-                        //this._gl.bufferSubData( this._type, 0, v );
-                        this._prevValue = v;
-                    }
+                    //if ( this._prevValue!==v ) {
+                    this._gl.bufferData(this._type, v, this._gl.STREAM_DRAW);
+                    //this._gl.bufferSubData( this._type, 0, v );
+                    //this._prevValue= v;
+                    //}
                 };
                 Buffer.prototype.forceEnableWithValue = function (v) {
                     this._gl.bindBuffer(this._type, this._buffer);
@@ -14622,8 +15564,8 @@ var cc;
             c2d.setCompositeOperation = function (o) {
                 this.globalCompositeOperation = cc.render.CompositeOperationToCanvas[o];
             };
-            c2d.getCompositeOperation = function (o) {
-                return this.globalCompositeOperation;
+            c2d.getCompositeOperation = function () {
+                return cc.render.CanvasToComposite[this.globalCompositeOperation];
             };
             c2d.drawTexture = function (texture, sx, sy, sw, sh, dx, dy, dw, dh) {
                 "use strict";
@@ -14938,6 +15880,23 @@ var cc;
         })(render.CompositeOperation || (render.CompositeOperation = {}));
         var CompositeOperation = render.CompositeOperation;
         ;
+        render.CanvasToComposite = {
+            "source-over": 0,
+            "source-out": 1,
+            "source-in": 2,
+            "source-atop": 3,
+            "destination-over": 4,
+            "destination-in": 5,
+            "destination-out": 6,
+            "destination-atop": 7,
+            "multiply": 8,
+            "screen": 9,
+            "copy": 10,
+            "lighter": 11,
+            "darker": 12,
+            "xor": 13,
+            "add": 14
+        };
         render.CompositeOperationToCanvas = [
             "source-over",
             "source-out",
@@ -15359,13 +16318,8 @@ var cc;
                 }
                 // simply rebind the buffer, not modify its contents.
                 this._gl.bindBuffer(this._gl.ELEMENT_ARRAY_BUFFER, this._glIndexBuffer._buffer);
-                //if ( this._dataBufferIndex > this._dataBufferFloat.length/2 ) {
                 this._glDataBuffer.forceEnableWithValue(this._dataBufferFloat);
-                //this._glIndexBuffer.forceEnableWithValue(this._indexBuffer);
-                //} else {
-                //    this._glDataBuffer.enableWithValue(this._dataBufferFloat.subarray(0, this._dataBufferIndex));
-                //    this._glIndexBuffer.enableWithValue(this._indexBuffer.subarray(0, this._indexBufferIndex));
-                //}
+                //this._glDataBuffer.enableWithValue(this._dataBufferFloat.subarray(0, this._dataBufferIndex));
                 shader.flushBuffersWithContent(rcs);
                 this._gl.drawElements(this._gl.TRIANGLES, this._indexBufferIndex, this._gl.UNSIGNED_SHORT, 0);
                 // reset buffer data index.
@@ -15383,7 +16337,6 @@ var cc;
                 var b = (tint[2] * 255) | 0;
                 var a = (tint[3] * rcs._globalAlpha * 255) | 0;
                 return (r) | (g << 8) | (b << 16) | (a << 24);
-                //return 0xff0000ff;
             };
             GeometryBatcher.prototype.batchRectGeometryWithSpriteFast = function (sprite, u0, v0, u1, v1, rcs) {
                 var cc = this.__uintColor(rcs);
@@ -15426,7 +16379,7 @@ var cc;
              * @member cc.render.GeometryBatcher.MAX_QUADS
              * @type {number}
              */
-            GeometryBatcher.MAX_QUADS = 30000; //(65536/6)|0;
+            GeometryBatcher.MAX_QUADS = 26214; // 1Mb/40
             return GeometryBatcher;
         })();
         render.GeometryBatcher = GeometryBatcher;
@@ -17760,6 +18713,7 @@ var cc;
                     url = this.__addPrefixIfNeeded(url);
                     var resource = new Resource(url);
                     this._resources.push(resource);
+                    return this;
                 };
                 /**
                  * Add a collection of resources to the load queue.
@@ -17770,6 +18724,7 @@ var cc;
                     for (var i = 0; i < resources.length; i++) {
                         this.addResource(resources[i]);
                     }
+                    return this;
                 };
                 /**
                  * Start loading all resources in this loader.
@@ -18350,6 +19305,7 @@ var cc;
 /// <reference path="../../node/sprite/SpriteFrame.ts"/>
 /// <reference path="../../render/RenderingContext.ts"/>
 /// <reference path="../../render/Texture2D.ts"/>
+/// <reference path="../../widget/Label.ts"/>
 /// <reference path="./SpriteFontHelper.ts"/>
 var cc;
 (function (cc) {
@@ -18731,11 +19687,11 @@ var cc;
                             x = 0;
                             y += this._height;
                         }
-                        if (fontDef.fill) {
-                            ctx.fillText(str, x + strw / 2, y);
-                        }
                         if (fontDef.stroke) {
                             ctx.strokeText(str, x + strw / 2, y);
+                        }
+                        if (fontDef.fill) {
+                            ctx.fillText(str, x + strw / 2, y);
                         }
                         chars[str] = {
                             x: x + fontDef.padding / 2,
@@ -18784,29 +19740,157 @@ var cc;
                     }
                 };
                 /**
+                 * Draw a text with the current font that will fit in a given rectangle.
+                 * The text will flow with the given rectangle width.
+                 * The text will be horizontal and vertically aligned in the rect based on the valign/halign hints.
+                 * The text can have multiple lines separated by \n characters.
+                 * @param ctx {cc.render.RenderingContext} multi renderer rendering context.
+                 * @param text {string} text to fit in the rectangle.
+                 * @param x {number} x position of the rect to fit the text in.
+                 * @param y {number} y position of the rect to fit the text in.
+                 * @param width {number} width of the rect to fit the text in.
+                 * @param height {number} height of the rect to fit the text in.
+                 * @param valign {cc.widget.VALIGN} vertical alignment hint
+                 * @param halign {cc.widget.HALIGN} horizontal alignment hint
+                 */
+                SpriteFont.prototype.drawTextInRect = function (ctx, text, x, y, width, height, halign, valign) {
+                    var textSize = this.getTextSize(text, width);
+                    var lines = text.split('\n');
+                    var textHeight = textSize.height;
+                    var yoffset = 0;
+                    // make top be always up regardless how y-axis grows.
+                    if (cc.render.RENDER_ORIGIN === "bottom") {
+                        if (valign === 2 /* BOTTOM */) {
+                            valign = 0 /* TOP */;
+                        }
+                        else if (valign === 0 /* TOP */) {
+                            valign = 2 /* BOTTOM */;
+                        }
+                    }
+                    switch (valign) {
+                        case 1 /* MIDDLE */:
+                            yoffset = (height - textHeight) / 2;
+                            break;
+                        case 2 /* BOTTOM */:
+                            yoffset = height - textHeight - 1;
+                    }
+                    if (cc.render.RENDER_ORIGIN === "bottom") {
+                        yoffset += (lines.length - 1) * this._height;
+                    }
+                    var xx = x;
+                    for (var n = 0; n < lines.length; n++) {
+                        var xoffset = 0;
+                        var lineWidth = this.getStringWidth(lines[n]);
+                        switch (halign) {
+                            case 1 /* CENTER */:
+                                break;
+                            case 2 /* RIGHT */:
+                        }
+                        var words = lines[n].split(" ");
+                        for (var i = 0; i < words.length; i++) {
+                            var word = words[i];
+                            if (i < words.length - 1) {
+                                word += " ";
+                            }
+                            var wordWidth = this.getStringWidth(word);
+                            if (x + wordWidth > width) {
+                                y += this._height * (cc.render.RENDER_ORIGIN === "bottom" ? -1 : 1);
+                                x = 0;
+                            }
+                            for (var j = 0; j < word.length; j++) {
+                                var char = this._chars[word[j]];
+                                if (char) {
+                                    // draw char
+                                    char.draw(ctx, x + xoffset, y + yoffset, lines[n].charAt(i + 1));
+                                    x += char._xadvance;
+                                }
+                            }
+                        }
+                        y += this._height * (cc.render.RENDER_ORIGIN === "bottom" ? -1 : 1);
+                        x = xx;
+                    }
+                };
+                /**
                  * Get a text dimension by this font.
                  * @method cc.plugin.font.SpriteFont#textSize
                  * @param text {string}
+                 * @param flowWidth {number=}
                  * @returns {cc.math.Dimension}
                  */
-                SpriteFont.prototype.getTextSize = function (text) {
+                SpriteFont.prototype.getTextSize = function (text, flowWidth) {
                     var width = 0;
                     var height = 0;
-                    var lines = text.split('\n');
-                    for (var n = 0; n < lines.length; n++) {
-                        var w = 0;
-                        for (var i = 0; i < lines[n].length; i++) {
-                            var char = this._chars[lines[n].charAt(i)];
-                            if (char) {
-                                w += char._xadvance;
+                    if (!flowWidth) {
+                        var lines = text.split('\n');
+                        for (var n = 0; n < lines.length; n++) {
+                            var w = this.getStringWidth(lines[n]);
+                            if (w > width) {
+                                width = w;
                             }
+                            height += this._height;
                         }
-                        if (w > width) {
-                            width = w;
-                        }
-                        height += this._height;
+                        return new cc.math.Dimension(width, height);
                     }
-                    return new cc.math.Dimension(width, height);
+                    else {
+                        return this.getTextSizeFlow(text, flowWidth);
+                    }
+                };
+                SpriteFont.prototype.getTextSizeFlow = function (text, flowWidth) {
+                    var lines = text.split("\n");
+                    var ret = new cc.math.Dimension();
+                    for (var i = 0; i < lines.length; i++) {
+                        var d = this.getLineSizeFlow(lines[i], flowWidth);
+                        if (d.width > ret.width) {
+                            ret.width = d.width;
+                        }
+                        ret.height += d.height;
+                    }
+                    return ret;
+                };
+                SpriteFont.prototype.getLineSizeFlow = function (text, flowWidth) {
+                    var maxWidth = 0;
+                    var w = 0;
+                    var h = this._height;
+                    var words = text.split(" ");
+                    for (var i = 0; i < words.length; i++) {
+                        var word = words[i];
+                        if (i < words.length - 1) {
+                            word += " ";
+                        }
+                        var wordWidth = this.getStringWidth(word);
+                        // wrap line
+                        if (w + wordWidth > flowWidth) {
+                            h += this._height;
+                            if (w > maxWidth) {
+                                maxWidth = w;
+                            }
+                            w = wordWidth;
+                        }
+                        else {
+                            w += wordWidth;
+                        }
+                    }
+                    if (w > maxWidth) {
+                        maxWidth = w;
+                    }
+                    return new cc.math.Dimension(maxWidth, h);
+                };
+                /**
+                 * Get a string width based on the font char definition.
+                 * If the string contains an unknown character to the font, that character will be skipped and add 0 to the
+                 * string width.
+                 * @param text {string}
+                 * @returns {number} string width based on the current font.
+                 */
+                SpriteFont.prototype.getStringWidth = function (text) {
+                    var w = 0;
+                    for (var i = 0; i < text.length; i++) {
+                        var char = this._chars[text.charAt(i)];
+                        if (char) {
+                            w += char._xadvance;
+                        }
+                    }
+                    return w;
                 };
                 return SpriteFont;
             })();
@@ -19020,6 +20104,11 @@ var cc;
             var AssetManager = (function () {
                 function AssetManager() {
                 }
+                AssetManager.mergeResources = function (res) {
+                    for (var i in res) {
+                        cc.plugin.asset.AssetManager._resources[i] = res[i];
+                    }
+                };
                 /**
                  * Load a resource set.
                  * Internally, it builds a <code>cc.plugin.loader.Loader</code> object and starts the loading process.
@@ -19072,6 +20161,7 @@ var cc;
                     var texture = new cc.render.Texture2D(img, id);
                     _textures[id] = texture;
                     _frames[id] = new cc.node.sprite.SpriteFrame(texture);
+                    return texture;
                 };
                 /**
                  * Add a cc.plugin.loader.Resource instance.
@@ -19103,7 +20193,8 @@ var cc;
                  * @returns {cc.node.sprite.SpriteFrame}
                  */
                 AssetManager.getSpriteFrame = function (id) {
-                    return _frames[id];
+                    var ret = _frames[id];
+                    return ret ? ret : null;
                 };
                 /**
                  * Add an array of SpriteFrames to the cache.
@@ -19148,7 +20239,11 @@ var cc;
                  * @returns {cc.render.Texture2D}
                  */
                 AssetManager.getTexture = function (name) {
-                    return _textures[name];
+                    var ret = _textures[name];
+                    return ret ? ret : null;
+                };
+                AssetManager.addAnimation = function (animation, name) {
+                    _animations[name] = animation;
                 };
                 /**
                  * Create and store an animation build of the frames identified by the frames array.
@@ -19232,7 +20327,8 @@ var cc;
                  * @returns {cc.plugin.font.SpriteFont}
                  */
                 AssetManager.getSpriteFont = function (fontName) {
-                    return _spriteFonts[fontName];
+                    var ret = _spriteFonts[fontName];
+                    return ret ? ret : null;
                 };
                 /**
                  * Create a SpriteFont for a System Font.
@@ -19253,11 +20349,17 @@ var cc;
                     }
                 };
                 AssetManager.getAudioBuffer = function (id) {
-                    return _audioBuffers[id];
+                    var ret = _audioBuffers[id];
+                    return ret ? ret : null;
                 };
                 AssetManager.addAudioBuffer = function (buffer, id) {
                     _audioBuffers[id] = buffer;
                 };
+                /**
+                 * For backwards compatibility
+                 * Map of string,Resource
+                 */
+                AssetManager._resources = {};
                 return AssetManager;
             })();
             asset.AssetManager = AssetManager;
@@ -19304,6 +20406,7 @@ var cc;
                 AudioEffectStatus[AudioEffectStatus["PAUSE"] = 2] = "PAUSE";
                 AudioEffectStatus[AudioEffectStatus["STOP"] = 3] = "STOP";
                 AudioEffectStatus[AudioEffectStatus["END"] = 4] = "END";
+                AudioEffectStatus[AudioEffectStatus["LOADED"] = 5] = "LOADED";
             })(_audio.AudioEffectStatus || (_audio.AudioEffectStatus = {}));
             var AudioEffectStatus = _audio.AudioEffectStatus;
             /**
@@ -19333,7 +20436,14 @@ var cc;
                  * @param buffer {object} Audio buffer object.
                  * @param masterGain {object} a GainNode which will act as system volume.
                  */
-                function AudioEffect(buffer, masterGain) {
+                function AudioEffect(masterGain, buffer) {
+                    /**
+                     * An string id.
+                     * @member cc.plugin.audio.AudioEffect#_id
+                     * @type {string}
+                     * @private
+                     */
+                    this._id = null;
                     /**
                      *
                      * @member cc.plugin.audio.AudioEffect#_isWebAudio
@@ -19490,6 +20600,13 @@ var cc;
                      */
                     this._onStart = null;
                     /**
+                     * Audio repeat callback.
+                     * @member cc.plugin.audio.AudioEffect#_onRepeat
+                     * @type {cc.plugin.audio.AudioCallback}
+                     * @private
+                     */
+                    this._onRepeat = null;
+                    /**
                      * Internal BiquadFilter node for sound filtering.
                      * @member cc.plugin.audio.AudioEffect#_filter
                      * @type {object}
@@ -19518,15 +20635,27 @@ var cc;
                      */
                     this._convolverEnabled = false;
                     this._isWebAudio = true;
-                    this._bufferDuration = buffer.duration;
-                    this._duration = buffer.duration;
+                    if (buffer) {
+                        this.setBuffer(buffer);
+                    }
                     this._gain = (typeof audioContext.createGain === "undefined") ? audioContext.createGainNode() : audioContext.createGain();
                     this._gain.connect(masterGain);
                     this._masterGain = masterGain;
-                    this._buffer = buffer;
                     this._filter = cc.plugin.audio.AudioManager.getContext().createBiquadFilter();
                     this._convolver = cc.plugin.audio.AudioManager.getContext().createConvolver();
                 }
+                AudioEffect.prototype.setId = function (s) {
+                    this._id = s;
+                    return this;
+                };
+                AudioEffect.prototype.getId = function () {
+                    return this._id;
+                };
+                AudioEffect.prototype.setBuffer = function (buffer) {
+                    this._bufferDuration = buffer.duration;
+                    this._duration = buffer.duration;
+                    this._buffer = buffer;
+                };
                 /**
                  * Make the audio loop or not. This can be changed at any given time.
                  * @method cc.plugin.audio.AudioEffect#loop
@@ -19833,11 +20962,16 @@ var cc;
                         me._endTimerId = null;
                         me._pauseTime = 0;
                         me._status = 4 /* END */;
-                        if (me._onEnd) {
-                            me._onEnd(this);
-                        }
                         if (me._loop) {
+                            if (me._onRepeat) {
+                                me._onRepeat(me);
+                            }
                             me.play(0);
+                        }
+                        else {
+                            if (me._onEnd) {
+                                me._onEnd(me);
+                            }
                         }
                     }, timeleft * 1000);
                 };
@@ -19909,6 +21043,16 @@ var cc;
                     return this;
                 };
                 /**
+                 * Set audio on repeat callback.
+                 * Effects repeat when looping.
+                 * @method cc.plugin.audio.AudioEffect#onRepeat
+                 * @param c {cc.plugin.audio.AudioCallback}
+                 */
+                AudioEffect.prototype.onRepeat = function (c) {
+                    this._onRepeat = c;
+                    return this;
+                };
+                /**
                  * Set audio on pause callback
                  * @method cc.plugin.audio.AudioEffect#onPause
                  * @param c {cc.plugin.audio.AudioCallback}
@@ -19969,16 +21113,100 @@ var cc;
                 return AudioEffect;
             })();
             _audio.AudioEffect = AudioEffect;
+            var SimpleAudioEffect = (function () {
+                function SimpleAudioEffect() {
+                    this._audio = null;
+                    this._loaded = false;
+                    this._status = 0 /* NONE */;
+                    this._url = null;
+                    this._pauseTime = 0;
+                    this._volume = 1;
+                    this._masterVolume = 1;
+                    this._audio = document.createElement('audio');
+                    this._audio.preload = "auto";
+                    this._audio.autoplay = false;
+                }
+                SimpleAudioEffect.prototype.setUrl = function (url, autoplay) {
+                    if (url === this._url) {
+                        return;
+                    }
+                    var me = this;
+                    this._url = url;
+                    this._loaded = false;
+                    this._audio.addEventListener("canplaythrough", function (e) {
+                        e.srcElement.removeEventListener("canplaythrough", this);
+                        me._loaded = true;
+                        me._status = 5 /* LOADED */;
+                        if (autoplay) {
+                            me.play();
+                        }
+                    }, false);
+                    this._audio.src = url;
+                };
+                SimpleAudioEffect.prototype.setMasterVolume = function (v) {
+                    this._masterVolume = v;
+                };
+                SimpleAudioEffect.prototype.setVolume = function (v) {
+                    this._volume = v;
+                    this._audio.volume = v * this._masterVolume;
+                };
+                SimpleAudioEffect.prototype.loop = function (v) {
+                    this._loop = true;
+                    this.play();
+                };
+                SimpleAudioEffect.prototype.play = function () {
+                    if (this._status !== 0 /* NONE */) {
+                        this._status = 1 /* PLAY */;
+                        this._audio.currentTime = 0;
+                        this._audio.loop = this._loop;
+                        this._audio.play();
+                    }
+                };
+                SimpleAudioEffect.prototype.pause = function () {
+                    if (this._status !== 0 /* NONE */) {
+                        this._status = 2 /* PAUSE */;
+                        this._pauseTime = this._audio.currentTime;
+                        this._audio.pause();
+                    }
+                };
+                SimpleAudioEffect.prototype.resume = function () {
+                    if (this._status !== 0 /* NONE */) {
+                        this._status = 1 /* PLAY */;
+                        this._audio.currentTime = this._pauseTime;
+                        this._audio.play();
+                        this._pauseTime = 0;
+                    }
+                };
+                SimpleAudioEffect.prototype.stop = function () {
+                    this._status = 3 /* STOP */;
+                    this._pauseTime = 0;
+                    this._audio.pause();
+                };
+                return SimpleAudioEffect;
+            })();
+            _audio.SimpleAudioEffect = SimpleAudioEffect;
             /**
              * @class cc.plugin.audio.AudioManager
              * @classdesc
              *
              * This object represents a sound manager.
+             * The sound manager does several things:
+             *
+             * <li>keep an internal AudioEffect object pool. These elements are AudioBuffer decoded objects or Audio tags,
+             *     depending on the AudioManager implementation.
+             * <li>Has 3 gain nodes: music, effects, and a general one connected to the two previous ones.
+             * <li>Plays background music using an Audio tag. You definitely don't want to have a 10 minutes song decoded
+             *     into memory.
+             *
+             * There's only one music node and up to MAX_AUDIO_EFFECTS (16) for a total of 17 concurrent sounds.
+             * The AudioManager objects manages lifecycle of the sounds. That means that an effect can be requested for play,
+             * but not stop pause or resume. For such fine control, call <code>createAudio</code> method to get an
+             * <code>AudioEffect</code> object which has much more advanced capabilities.
              */
             var AudioManager = (function () {
-                function AudioManager() {
+                function AudioManager(ami) {
+                    var _this = this;
                     this._context = null;
-                    this._music = null;
                     /**
                      * Master volume.
                      * @type {number}
@@ -19986,16 +21214,103 @@ var cc;
                      */
                     this._volume = 1;
                     this._masterGain = null;
+                    this._soundPool = [];
+                    this._playingPool = [];
+                    this._music = null;
                     if (audioContext) {
                         this._masterGain = audioContext.createGain();
                         this._masterGain.connect(audioContext.destination);
                     }
+                    this._music = new SimpleAudioEffect();
+                    ami = ami || {};
+                    ami.numChannels = ami.numChannels || 16;
+                    for (var i = 0; i < ami.numChannels; i++) {
+                        var ae = new AudioEffect(this._masterGain);
+                        this._soundPool.push(ae);
+                        ae.onEnd(function (ae) {
+                            _this.__recycle(ae);
+                        });
+                        ae.onStop(function (ae) {
+                            _this.__recycle(ae);
+                        });
+                    }
                 }
+                AudioManager.prototype.__recycle = function (ae) {
+                    var index = this._playingPool.indexOf(ae);
+                    if (-1 !== index) {
+                        this._playingPool.splice(index, 1);
+                        this._soundPool.push(ae);
+                    }
+                    else {
+                        console.log("recycle sound for not found element.");
+                    }
+                };
                 AudioManager.prototype.createAudio = function (id) {
-                    return new AudioEffect(cc.plugin.asset.AssetManager.getAudioBuffer(id), this._masterGain);
+                    return new AudioEffect(this._masterGain, cc.plugin.asset.AssetManager.getAudioBuffer(id));
                 };
                 AudioManager.prototype.setVolume = function (v) {
+                    this._volume = v;
                     this._masterGain.gain.value = v;
+                    this._music.setMasterVolume(v);
+                };
+                AudioManager.prototype.setMusicVolume = function (v) {
+                    this._music.setVolume(v);
+                };
+                /**
+                 * Play a loaded AudioBuffer.
+                 * This method plays a fully system-controlled sound. There's no user-side control.
+                 * To have a client side controlled audio effect object, call <code>createAudio</code>.
+                 * @param id {string|AudioBuffer} a string id in the asset manager.
+                 */
+                AudioManager.prototype.playEffect = function (id) {
+                    if (this._soundPool.length === 0) {
+                        cc.Debug.warn(cc.locale.ERR_SOUND_POOL_EMPTY);
+                    }
+                    var ab = null;
+                    if (typeof id === 'string') {
+                        ab = cc.plugin.asset.AssetManager.getAudioBuffer(id);
+                    }
+                    else {
+                        ab = id;
+                    }
+                    if (null !== ab) {
+                        var ae = this._soundPool.pop();
+                        ae.setBuffer(ab);
+                        ae.play();
+                        this._playingPool.push(ae);
+                    }
+                };
+                AudioManager.prototype.pauseEffects = function () {
+                    for (var i = 0; i < this._playingPool.length; i++) {
+                        this._playingPool[i].pause();
+                    }
+                };
+                AudioManager.prototype.resumeEffects = function () {
+                    for (var i = 0; i < this._playingPool.length; i++) {
+                        this._playingPool[i].resume();
+                    }
+                };
+                AudioManager.prototype.stopEffects = function () {
+                    for (var i = 0; i < this._playingPool.length; i++) {
+                        this._playingPool[i].stop();
+                    }
+                };
+                AudioManager.prototype.setMusic = function (url, autoplay) {
+                    this._music.loop(true);
+                    this._music.setUrl(url, autoplay);
+                };
+                AudioManager.prototype.playMusic = function () {
+                    this._music.loop(true);
+                    this._music.play();
+                };
+                AudioManager.prototype.pauseMusic = function () {
+                    this._music.pause();
+                };
+                AudioManager.prototype.resumeMusic = function () {
+                    this._music.resume();
+                };
+                AudioManager.prototype.stopMusic = function () {
+                    this._music.stop();
                 };
                 //
                 //  enableiOSAudio() {
@@ -21080,6 +22395,9 @@ var cc;
                 enumerable: true,
                 configurable: true
             });
+            InputManagerEvent.prototype.getCurrentTarget = function () {
+                return this._target;
+            };
             Object.defineProperty(InputManagerEvent.prototype, "type", {
                 /**
                  * Get this event's type.
@@ -21862,6 +23180,12 @@ var cc;
                 this._localPoint = new Vector();
                 this._prevScreenPoint = new Vector();
             }
+            MouseInputManagerEvent.prototype.getDelta = function () {
+                return {
+                    x: this._screenPoint.x - this._prevScreenPoint.x,
+                    y: this._screenPoint.y - this._prevScreenPoint.y
+                };
+            };
             /**
              * Set this event's screen point.
              * @method cc.input.MouseInputManagerEvent#setScreenPoint
@@ -22173,8 +23497,8 @@ var cc;
                 this.modifiers = buildKeyModifiers();
                 var keys = keyDef.split("+");
                 for (var i = 0; i < keys.length - 1; i++) {
-                    if (this.modifiers.hasOwnProperty(keys[i])) {
-                        this.modifiers[keys[i]] = true;
+                    if (this.modifiers.hasOwnProperty(cc.input.KEYS[keys[i]])) {
+                        this.modifiers[cc.input.KEYS[keys[i]]] = true;
                     }
                     else {
                         this.isValid = false;
@@ -22482,7 +23806,7 @@ var cc;
              * @private
              */
             KeyboardCursor.prototype.__onKeyChange = function (key, pressed) {
-                this._callback(key, pressed);
+                this._callback(key, pressed, input.KEYS[key]);
             };
             /**
              * Register a KeyActionInfo for each key defined in the cursor event key description.
@@ -22811,7 +24135,7 @@ var cc;
                     resources: assets
                 }, function onLoad(resources) {
                     if (cc.__BACKWARDS_COMPATIBILITY__) {
-                        cc.plugin.asset.AssetManager._resources = resources;
+                        cc.plugin.asset.AssetManager.mergeResources(resources);
                     }
                     _onLoad(me);
                 }, function onProgress(resource, index, size, errored) {
@@ -23015,7 +24339,7 @@ var cc;
     cc.place = place;
     function blink(timeInSecs, blinks) {
         var originalVisibility = true;
-        var action = new Action().timeInfo(0, 1000 * timeInSecs).onStart(function (action, node) {
+        var action = new Action().timeInfo(0, timeInSecs).onStart(function (action, node) {
             originalVisibility = node.__isFlagSet(8 /* VISIBLE */);
         }).onEnd(function (action, node) {
             node.setVisible(originalVisibility);
@@ -23043,11 +24367,11 @@ var cc;
             jumps: jumps,
             amplitude: amplitude,
             relative: relative
-        }).timeInfo(0, timeInSecs * 1000);
+        }).timeInfo(0, timeInSecs);
     }
     function __catmull(timeInSecs, p, tension, relative, closed) {
         var segment = new Path().catmullRomTo(p, closed, tension);
-        return new PathAction({ segment: segment }).setRelative(relative).timeInfo(0, timeInSecs * 1000);
+        return new PathAction({ segment: segment }).setRelative(relative).timeInfo(0, timeInSecs);
     }
     function cardinalSplineTo(timeInSecs, p, tension, closed) {
         if (closed === void 0) { closed = false; }
@@ -23077,7 +24401,7 @@ var cc;
                 p2: p[1],
                 p3: p[2]
             })
-        }).setRelative(relative).timeInfo(0, timeInSecs * 1000);
+        }).setRelative(relative).timeInfo(0, timeInSecs);
     }
     function bezierTo(timeInSecs, p) {
         return __bezier(timeInSecs, p, false);
@@ -23088,7 +24412,7 @@ var cc;
     }
     cc.bezierBy = bezierBy;
     function __move(timeInSecs, p, relative) {
-        return new MoveAction().to(p).setRelative(relative).timeInfo(0, timeInSecs * 1000);
+        return new MoveAction().to(p).setRelative(relative).timeInfo(0, timeInSecs);
     }
     /**
      * Create a moveTo like <code>MoveAction</code> action.
@@ -23113,7 +24437,7 @@ var cc;
     }
     cc.moveBy = moveBy;
     function __scale(timeInSecs, x, y, relative) {
-        return new ScaleAction().to({ x: x, y: y }).setRelative(relative).timeInfo(0, timeInSecs * 1000);
+        return new ScaleAction().to({ x: x, y: y }).setRelative(relative).timeInfo(0, timeInSecs);
     }
     /**
      * Create a scaleTo like <code>ScaleAction</code> action.
@@ -23140,7 +24464,7 @@ var cc;
     }
     cc.scaleBy = scaleBy;
     function __rotate(timeInSecs, a, relative) {
-        return new RotateAction().to(a).setRelative(relative).timeInfo(0, timeInSecs * 1000);
+        return new RotateAction().to(a).setRelative(relative).timeInfo(0, timeInSecs);
     }
     /**
      * Create a rotateTo like <code>RotateAction</code> action.
@@ -23171,7 +24495,7 @@ var cc;
      * @returns {cc.action.Action}
      */
     function fadeIn(timeInSecs) {
-        return new AlphaAction().from(0).to(1).timeInfo(0, timeInSecs * 1000);
+        return new AlphaAction().from(0).to(1).timeInfo(0, timeInSecs);
     }
     cc.fadeIn = fadeIn;
     /**
@@ -23181,11 +24505,11 @@ var cc;
      * @returns {cc.action.Action}
      */
     function fadeOut(timeInSecs) {
-        return new AlphaAction().from(1).to(0).timeInfo(0, timeInSecs * 1000);
+        return new AlphaAction().from(1).to(0).timeInfo(0, timeInSecs);
     }
     cc.fadeOut = fadeOut;
     function __fade(timeInSecs, a, relative) {
-        return new AlphaAction().to(a / 255).setRelative(relative).timeInfo(0, timeInSecs * 1000);
+        return new AlphaAction().to(a / 255).setRelative(relative).timeInfo(0, timeInSecs);
     }
     /**
      * Create a fadeTo like <code>AlphaAction</code> action.
@@ -23210,7 +24534,7 @@ var cc;
     }
     cc.fadeBy = fadeBy;
     function __tint(timeInSecs, r, g, b, relative) {
-        return new TintAction().to({ r: r / 255, g: g / 255, b: b / 255 }).setRelative(relative).timeInfo(0, timeInSecs * 1000);
+        return new TintAction().to({ r: r / 255, g: g / 255, b: b / 255 }).setRelative(relative).timeInfo(0, timeInSecs);
     }
     /**
      * Create a tintTo like <code>TintAction</code> action.
@@ -23282,7 +24606,7 @@ var cc;
      * @returns {cc.action.Action}
      */
     function delayTime(delayInSecs) {
-        return new PropertyAction().from({}).to({}).timeInfo(0, delayInSecs * 1000);
+        return new PropertyAction().from({}).to({}).timeInfo(0, delayInSecs);
     }
     cc.delayTime = delayTime;
     function __sequence(sequential, actions) {
@@ -23948,6 +25272,8 @@ var cc;
 /// <reference path="../node/Sprite.ts"/>
 /// <reference path="../node/Director.ts"/>
 /// <reference path="../node/sprite/Animation.ts"/>
+/// <reference path="../util/Class.ts"/>
+/// <reference path="../plugin/audio/AudioManager.ts"/>
 var cc;
 (function (cc) {
     var Color = cc.math.Color;
@@ -24050,21 +25376,87 @@ var cc;
         return new cc.node.sprite.Animation();
     }
     cc.animation = animation;
-    var Animation;
-    (function (Animation) {
-        Animation.create = cc.animation;
-    })(Animation = cc.Animation || (cc.Animation = {}));
     function sprite(p) {
         return new cc.node.Sprite(p);
     }
     cc.sprite = sprite;
     cc.Sprite = cc.node.Sprite;
+    cc.SpriteBatchNode = cc.node.SpriteBatchNode;
     function layer() {
         return new cc.node.Node();
     }
     cc.layer = layer;
     cc.Layer = cc.node.Node;
     cc.Node = cc.node.Node;
+    cc.LabelBMFont = cc.widget.Label;
+    cc.LabelTTF = cc.widget.LabelTTF;
+    function Animation(frames, duration) {
+        var animation = new cc.node.sprite.Animation();
+        animation.addFrames(frames);
+        animation.setDelayPerUnit(duration);
+        return animation;
+    }
+    cc.Animation = Animation;
+    Animation.create = cc.animation;
+    cc.TransitionSlideInL = function (time_in_secs, scene) {
+        return new cc.transition.TransitionSlideInL(time_in_secs * 1000, scene);
+    };
+    cc.TransitionSlideInR = function (time_in_secs, scene) {
+        return new cc.transition.TransitionSlideInR(time_in_secs * 1000, scene);
+    };
+    cc.TransitionSlideInT = function (time_in_secs, scene) {
+        return new cc.transition.TransitionSlideInT(time_in_secs * 1000, scene);
+    };
+    cc.TransitionSlideInB = function (time_in_secs, scene) {
+        return new cc.transition.TransitionSlideInB(time_in_secs * 1000, scene);
+    };
+    cc.TransitionFade = function (time_in_secs, scene) {
+        return new cc.transition.TransitionFade(time_in_secs * 1000, scene);
+    };
+    cc.TEXT_ALIGNMENT_LEFT = 0;
+    cc.TEXT_ALIGNMENT_CENTER = 1;
+    cc.TEXT_ALIGNMENT_RIGHT = 2;
+    cc.VERTICAL_TEXT_ALIGNMENT_TOP = 0;
+    cc.VERTICAL_TEXT_ALIGNMENT_CENTER = 1;
+    cc.VERTICAL_TEXT_ALIGNMENT_BOTTOM = 2;
+    cc.pAdd = cc.math.Vector.add;
+    function clampf(value, min_inclusive, max_inclusive) {
+        if (min_inclusive > max_inclusive) {
+            var temp = min_inclusive;
+            min_inclusive = max_inclusive;
+            max_inclusive = temp;
+        }
+        return value < min_inclusive ? min_inclusive : value < max_inclusive ? value : max_inclusive;
+    }
+    cc.clampf = clampf;
+    function pClamp(p, min_inclusive, max_inclusive) {
+        return cc.p(cc.clampf(p.x, min_inclusive.x, max_inclusive.x), cc.clampf(p.y, min_inclusive.y, max_inclusive.y));
+    }
+    cc.pClamp = pClamp;
+    cc.audioEngine = (function () {
+        var ae = new cc.plugin.audio.AudioManager();
+        return {
+            playMusic: function (url) {
+                ae.setMusic(url, true);
+            },
+            stopMusic: function () {
+                ae.stopMusic();
+            },
+            stopAllEffects: function () {
+                ae.stopEffects();
+            },
+            playEffect: function (name) {
+                var r = cc.plugin.asset.AssetManager._resources[name];
+                if (r) {
+                    ae.playEffect(r);
+                }
+            },
+            setMusicVolume: function (vol) {
+                ae.setMusicVolume(vol);
+            }
+        };
+    })();
+    cc.KEY = cc.input.KEYS;
 })(cc || (cc = {}));
 
 /// <reference path="./AssetManager.ts"/>
@@ -24153,9 +25545,36 @@ var cc;
             cc.director._renderer.prepareTexture(cc.plugin.asset.AssetManager.getTexture(imageResFile));
             cc.plugin.asset.AssetManager.addSpriteFramesFromFrameWithPLIST(imageResFile, plist);
         };
+        spriteFrameCache.getSpriteFrame = function (name) {
+            return cc.plugin.asset.AssetManager.getSpriteFrame(name);
+        };
         return spriteFrameCache;
     })();
     cc.spriteFrameCache = spriteFrameCache;
+    var textureCache = (function () {
+        function textureCache() {
+        }
+        textureCache.addImage = function (name) {
+            var image = getResource(name);
+            var texture = cc.plugin.asset.AssetManager.addImage(image, name);
+            cc.director._renderer.prepareTexture(texture);
+            return texture;
+        };
+        return textureCache;
+    })();
+    cc.textureCache = textureCache;
+    var animationCache = (function () {
+        function animationCache() {
+        }
+        animationCache.addAnimation = function (animation, name) {
+            cc.plugin.asset.AssetManager.addAnimation(animation, name);
+        };
+        animationCache.getAnimation = function (name) {
+            return cc.plugin.asset.AssetManager.getAnimationById(name);
+        };
+        return animationCache;
+    })();
+    cc.animationCache = animationCache;
 })(cc || (cc = {}));
 
 /**
@@ -24192,13 +25611,48 @@ var cc;
         CCClass["__CLASS"] = name;
         extendingProt = (typeof extendingProt === "function" ? extendingProt() : extendingProt);
         for (var fname in extendingProt) {
-            // Check if we're overwriting an existing function
-            prototype[fname] = extendingProt[fname];
+            var isFunc = typeof extendingProt[fname] === 'function';
+            var overrideIsFunc = typeof prototype[fname] === 'function';
+            // ctor (wrong) idiom.
+            if (fname === 'ctor') {
+                prototype[fname] = (function (name, fn, superconstructor) {
+                    return function () {
+                        var tmp = this._super;
+                        this._super = function () {
+                            superconstructor.apply(this, arguments);
+                        };
+                        var ret = fn.apply(this, arguments);
+                        this._super = tmp;
+                        return ret;
+                    };
+                })(fname, extendingProt[fname], this);
+            }
+            else if (isFunc && overrideIsFunc && /\b_super\b/.test(extendingProt[fname])) {
+                // function with overriden function that uses _super in code
+                prototype[fname] = (function (name, fn) {
+                    return function () {
+                        var tmp = this._super;
+                        // Add a new ._super() method that is the same method
+                        // but on the super-Class
+                        this._super = _super[name];
+                        // The method only need to be bound temporarily, so we
+                        // remove it when we're done executing
+                        var ret = fn.apply(this, arguments);
+                        this._super = tmp;
+                        return ret;
+                    };
+                })(fname, extendingProt[fname]);
+            }
+            else {
+                // Check if we're overwriting an existing function
+                prototype[fname] = extendingProt[fname];
+            }
         }
         return CCClass;
     };
     cc.node.Node.extend = _Class.extend;
     cc.node.Sprite.extend = _Class.extend;
+    cc.node.SpriteBatchNode.extend = _Class.extend;
     cc.node.FastSprite.extend = _Class.extend;
     cc.node.Scene.extend = _Class.extend;
     cc.action.Action.extend = _Class.extend;

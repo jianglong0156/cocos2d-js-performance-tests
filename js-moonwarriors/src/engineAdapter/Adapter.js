@@ -454,46 +454,6 @@ ED.LoaderScene = {
     }
 };
 
-ED._super=function(target)
-{
-    var fun = null;
-    if (ED.version === EDV3)
-    {
-        fun = target._super;
-    }
-    else
-    {
-        // it's hack method, can't not judge the sprite class
-        if (arguments.length > 1)
-        {
-            fun = cc.Sprite.prototype.constructor;
-        }
-        else
-        {
-            fun = cc.Node.prototype.constructor;
-        }
-
-    }
-    switch (arguments.length)
-    {
-        case 1:
-            fun.call(target);
-            break;
-        case 2:
-            fun.call(target, arguments[1]);
-            break;
-        case 3:
-            fun.call(target, arguments[1], arguments[2]);
-            break;
-        case 4:
-            fun.call(target, arguments[1],  arguments[2], arguments[3]);
-            break;
-        case 5:
-            fun.call(target, arguments[1],  arguments[2], arguments[3], arguments[4]);
-            break;
-    }
-};
-
 if (ED.version === EDV4)
 {
     cc.spriteFrameCache.getSpriteFrame = cc.plugin.asset.AssetManager.getSpriteFrame;
@@ -517,17 +477,21 @@ else
         }
     }
 }
+if (ED.version === EDV4) {
+    window["CocosEngine"] = "Cocos2d-JS v4";
+}
 
+// v4 current is same with v3 20150213
 if (ED.version === EDV4)
 {
-    window["CocosEngine"] = "Cocos2d-JS v4";
+    //window["CocosEngine"] = "Cocos2d-JS v4";
     ED.getUpdateTime = function(dt)
     {
-        return dt / 1000;
+        return dt;
     }
     ED.schedule = function (target, callbackFun, delayTime)
     {
-        target.schedule.call(target, callbackFun, delayTime * 1000);
+        target.schedule.call(target, callbackFun, delayTime);
     }
 }
 else
@@ -542,25 +506,10 @@ else
     }
 }
 
-ED.rect = function (x, y, width, height)
-{
-    var rect = cc.rect(x, y, width, height);
-    if (ED.version === EDV4)
-    {
-        rect.width = rect.w;
-        rect.height = rect.h;
-    }
-    return rect;
-}
-
 if (ED.version === EDV4)
 {
     ED.rectIntersectsRect = function (ra, rb) {
-        var maxax = ra.x + ra.w,
-            maxay = ra.y + ra.h,
-            maxbx = rb.x + rb.w,
-            maxby = rb.y + rb.h;
-        return !(maxax < rb.x || maxbx < ra.x || maxay < rb.y || maxby < ra.y);
+        return ra.intersectsWith(rb);
     };
     cc.rectIntersectsRect = ED.rectIntersectsRect;
 }
@@ -581,18 +530,6 @@ ED.setFrames = function (animation, animFrames){
     }
 
 };
-ED.setDelayPerUnit = function(animation, perUnit){
-    if (ED.version === EDV3)
-    {
-        animation.setDelayPerUnit(perUnit);
-    }
-    else
-    {
-        animation.setDelayPerUnit(perUnit * 1000);
-    }
-
-};
-
 ED.getRenderStr = function ()
 {
     if (ED.version === EDV3)
@@ -620,19 +557,6 @@ ED.getRenderStr = function ()
     }
 };
 
-if (ED.version === EDV4)
-{
-    cc.SpriteBatchNode = cc.Node.extend({
-        _img:null,
-        _texture:null,
-        actors:[],
-        ctor: function (fileUrl) {
-            cc.Node.prototype.constructor.call(this);
-        }
-
-
-    });
-}
 if (ED.version === EDV3)
 {
     ED.FastSprite = cc.Sprite;
@@ -641,16 +565,4 @@ else
 {
     ED.FastSprite = cc.node.FastSprite;
     //ED.FastSprite = cc.Sprite;
-}
-
-ED.enemyInit = function (target, arg)
-{
-    if (ED.version === EDV3)
-    {
-        ED._super(target,arg);
-    }
-    else
-    {
-        ED._super(target, arg);
-    }
 }

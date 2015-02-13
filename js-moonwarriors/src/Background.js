@@ -33,7 +33,7 @@
 var BackSky = cc.Sprite.extend({
     active:true,
     ctor:function () {
-        ED._super(this,"res/bg01.png");
+        this._super("res/bg01.png");
         //var rect = cc.rect(0, 1, this.width, this.height-2);
         //this.setTextureRect(rect);
         this.setAnchorPoint(0, 0);
@@ -88,7 +88,7 @@ var BackTileMapLvl1 = [
 var BackTileMap = cc.Sprite.extend({
     active:true,
     ctor:function (frameName) {
-        ED._super(this,"res/"+frameName);
+        this._super("res/"+frameName);
         this.setAnchorPoint(0.5, 0);
     },
     destroy:function () {

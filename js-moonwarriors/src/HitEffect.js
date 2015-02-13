@@ -33,7 +33,7 @@
 var HitEffect = cc.Sprite.extend({
     active:true,
     ctor:function () {
-        ED._super(this,"res/hit.png");
+        this._super("#hit.png");
         this.setAnchorPoint(0.5, 0.5);
     },
     reset:function (x, y, rotation, scale) {
