@@ -123,7 +123,7 @@ var Enemy = ED.FastSprite.extend({
     },
     collideRect:function (x, y) {
         var w = this.width, h = this.height;
-        return cc.rect(x - w / 2, y - h / 4, w, h / 2+20);
+        return ED.rect(x - w / 2, y - h / 4, w, h / 2+20);
     }
 });
 

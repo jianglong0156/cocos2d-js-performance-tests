@@ -65,7 +65,7 @@ var Bullet = cc.Sprite.extend({
         this.HP--;
     },
     collideRect:function (x, y) {
-        return cc.rect(x - 3, y - 3, 6, 6);
+        return ED.rect(x - 3, y - 3, 6, 6);
     }
 });
 

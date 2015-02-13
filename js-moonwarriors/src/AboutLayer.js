@@ -42,7 +42,7 @@ var AboutLayer = cc.Layer.extend({
         this.addChild(sp, 0, 1);
 
         var cacheImage = cc.textureCache.addImage(res.menuTitle_png);
-        var title = new cc.Sprite(cacheImage, cc.rect(0, 40, 120, 38));
+        var title = new cc.Sprite(cacheImage, ED.rect(0, 40, 120, 38));
         title.x = winSize.width / 2;
         title.y = winSize.height - 60;
         this.addChild(title);

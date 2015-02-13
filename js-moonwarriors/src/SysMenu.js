@@ -69,17 +69,17 @@ var SysMenu = cc.Layer.extend({
 
         var singalHeight = MW.menuHeight;
         var singalWidth = MW.menuWidth;
-        var newGameNormal = new cc.Sprite(res.menu_png, cc.rect(0, 0, singalWidth, singalHeight));
-        var newGameSelected = new cc.Sprite(res.menu_png, cc.rect(0, singalHeight, singalWidth, singalHeight));
-        var newGameDisabled = new cc.Sprite(res.menu_png, cc.rect(0, singalHeight * 2, singalWidth, singalHeight));
+        var newGameNormal = new cc.Sprite(res.menu_png, ED.rect(0, 0, singalWidth, singalHeight));
+        var newGameSelected = new cc.Sprite(res.menu_png, ED.rect(0, singalHeight, singalWidth, singalHeight));
+        var newGameDisabled = new cc.Sprite(res.menu_png, ED.rect(0, singalHeight * 2, singalWidth, singalHeight));
 
-        var gameSettingsNormal = new cc.Sprite(res.menu_png, cc.rect(singalWidth, 0, singalWidth, singalHeight));
-        var gameSettingsSelected = new cc.Sprite(res.menu_png, cc.rect(singalWidth, singalHeight, singalWidth, singalHeight));
-        var gameSettingsDisabled = new cc.Sprite(res.menu_png, cc.rect(singalWidth, singalHeight * 2, singalWidth, singalHeight));
+        var gameSettingsNormal = new cc.Sprite(res.menu_png, ED.rect(singalWidth, 0, singalWidth, singalHeight));
+        var gameSettingsSelected = new cc.Sprite(res.menu_png, ED.rect(singalWidth, singalHeight, singalWidth, singalHeight));
+        var gameSettingsDisabled = new cc.Sprite(res.menu_png, ED.rect(singalWidth, singalHeight * 2, singalWidth, singalHeight));
 
-        var aboutNormal = new cc.Sprite(res.menu_png, cc.rect(singalWidth * 2, 0, singalWidth, singalHeight));
-        var aboutSelected = new cc.Sprite(res.menu_png, cc.rect(singalWidth * 2, singalHeight, singalWidth, singalHeight));
-        var aboutDisabled = new cc.Sprite(res.menu_png, cc.rect(singalWidth * 2, singalHeight * 2, singalWidth, singalHeight));
+        var aboutNormal = new cc.Sprite(res.menu_png, ED.rect(singalWidth * 2, 0, singalWidth, singalHeight));
+        var aboutSelected = new cc.Sprite(res.menu_png, ED.rect(singalWidth * 2, singalHeight, singalWidth, singalHeight));
+        var aboutDisabled = new cc.Sprite(res.menu_png, ED.rect(singalWidth * 2, singalHeight * 2, singalWidth, singalHeight));
         var flare = new cc.Sprite(res.flare_jpg);
         this.addChild(flare, 15, 10);
         flare.visible = false;

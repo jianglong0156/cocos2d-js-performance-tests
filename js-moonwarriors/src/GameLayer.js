@@ -99,7 +99,7 @@ var GameLayer = cc.Layer.extend({
         winSize = cc.director.getWinSize();
         this._levelManager = new LevelManager(this);
 
-        this.screenRect = cc.rect(0, 0, winSize.width, winSize.height + 10);
+        this.screenRect = ED.rect(0, 0, winSize.width, winSize.height + 10);
 
         // ship life
         var life = new cc.Sprite("res/ship03.png");
