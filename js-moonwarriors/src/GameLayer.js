@@ -58,6 +58,9 @@ var GameLayer = cc.Layer.extend({
     _totalDt: 0,
     _enemyNode: null,
     _hideAllFlag:false,
+    _createEnemyFlag:false,
+    _updateTime:0,
+    _calcIndex:0,
     ctor: function () {
         ED._super(this);
         this.init();
@@ -122,11 +125,13 @@ var GameLayer = cc.Layer.extend({
         this.addChild(this._explosions);
         Explosion.sharedExplosion();
 
+        this._calcIndex = 0;
 
         // schedule
         this.scheduleUpdate();
         //ED.schedule(this, this.refreshGame, 0.1);
         ED.schedule(this, this.scoreCounter, 1);
+        ED.schedule(this, this.calcFrame, 2);
 
 
         g_sharedGameLayer = this;
@@ -145,6 +150,26 @@ var GameLayer = cc.Layer.extend({
         return true;
     },
 
+    calcFrame:function ()
+    {
+        if (this._updateTime > 0.02)
+        {
+            this._calcIndex++;
+            this._createEnemyFlag = false;
+            if (this._calcIndex > 2)
+            {
+                this._calcIndex = 0;
+                console.log("time:" + this._updateTime + " curLength:" + Level1.enemies[0].Types.length + " nodeNum:" + SaveDataToServer._dataObj[1]["nodeNum"]);
+                Enemy.destroyTargetNum(Level1.enemies[0].Types.length);
+                Level1.enemies[0].Types.length = (Level1.enemies[0].Types.length / 2) | 0;
+            }
+
+        }
+        else
+        {
+            this._createEnemyFlag = true;
+        }
+    },
     scoreCounter:function () {
         if (this._state == STATE_PLAYING) {
             //this._time++;
@@ -152,8 +177,8 @@ var GameLayer = cc.Layer.extend({
                 this._oldTime = new Date().getTime();
             }
             this._time = Math.round(( new Date().getTime() - this._oldTime ) / 1000);
-            console.log(this._time);
-            if (this._time > 5) {
+            //console.log(this._time);
+            if (this._time > 5 && this._createEnemyFlag) {
 
                 this._levelManager.loadLevelResource(this._time);
             }
@@ -228,13 +253,14 @@ var GameLayer = cc.Layer.extend({
 
     update:function (dt) {
         var runTime =ED.getUpdateTime(dt);
+        this._updateTime = runTime;
         this._totalDt += runTime;
         //console.log(this._totalDt);
         if (this._state == STATE_PLAYING) {
             if (this._totalDt > MW.calcStartTime)
             {
                 this.addDataInArr(runTime);
-                if (this._totalDt - MW.calcStartTime >= MW.calcTimeOfDuration && !this._hideAllFlag)
+                if (this._totalDt - MW.calcStartTime >= MW.calcTimeOfDuration && !this._hideAllFlag && Level1.enemies[0].Types.length == 1)
                 {
                     this._state = STATE_GAMEOVER;
                     //cc.director.pause();

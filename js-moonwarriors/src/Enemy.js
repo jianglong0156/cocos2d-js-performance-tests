@@ -77,11 +77,6 @@ var Enemy = ED.FastSprite.extend({
             //if (this._hurtColorLife > 0) {
             //    this._hurtColorLife--;
             //}
-            if (this._enemyIndex % 2 == 0)
-            {
-                this._timeTick = 0;
-                this.runAction(cc.sequence(cc.delayTime(0.1 + this._enemyIndex / 20), cc.callFunc(this.selfDestroy, this)));
-            }
         }
 
         if (x < 0 || x > g_sharedGameLayer.screenRect.width || y < 0 || y > g_sharedGameLayer.screenRect.height || this.HP <= 0) {
@@ -92,9 +87,17 @@ var Enemy = ED.FastSprite.extend({
     },
     selfDestroy:function()
     {
-        this.active = false;
-        this.HP = 0;
-        this.destroy();
+        //this.active = false;
+        //this.HP = 0;
+        //this.destroy();
+
+        // just explosiion
+        var a = Explosion.getOrCreateExplosion();
+        a.attr({
+            x: this.x,
+            y: this.y
+        });
+        SparkEffect.getOrCreateSparkEffect(this.x, this.y);
     },
     destroy:function () {
         MW.SCORE += this.scoreValue;
@@ -126,6 +129,24 @@ var Enemy = ED.FastSprite.extend({
         return cc.rect(x - w / 2, y - h / 4, w, h / 2+20);
     }
 });
+
+Enemy.destroyTargetNum = function (destroyTotalNum)
+{
+    var destroyIndex = 0;
+    for (var j = 0; j < MW.CONTAINER.ENEMIES.length; j++) {
+        selChild = MW.CONTAINER.ENEMIES[j];
+
+        if (selChild.active == true) {
+            selChild.destroy();
+            destroyIndex++;
+            if (destroyIndex >= destroyTotalNum)
+            {
+                break;
+            }
+        }
+
+    }
+}
 
 Enemy.getOrCreateEnemy = function (arg, index) {
     var selChild = null;

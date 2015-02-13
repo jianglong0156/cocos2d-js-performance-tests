@@ -98,8 +98,8 @@ var g_mainmenu = [
     res.logoBack_png,
     res.b01_png,
     res.b01_plist,
-    res.mainMainMusic_mp3,
-    res.mainMainMusic_ogg,
+    //res.mainMainMusic_mp3,
+    //res.mainMainMusic_ogg,
     res.menuTitle_png,
     //res.textureTransparentPack_plist,
     //res.textureTransparentPack_png

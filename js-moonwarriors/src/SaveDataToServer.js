@@ -68,6 +68,7 @@ var SaveDataToServer = {
             }
         };
         var dataJson = this._postHeadStr + "=" + JSON.stringify(this._dataObj);
+        console.log(JSON.stringify(SaveDataToServer._dataObj[1]));
         xhr.send(dataJson);
     },
 
@@ -81,6 +82,6 @@ var SaveDataToServer = {
         objData[this._nodeHeadStr] = nodeNum;
         objData[this._drawCallStr] = (0 | cc.g_NumberOfDraws);
 
-        this._dataObj[this._dataObj.length] = objData;
+        this._dataObj[1] = objData;
     }
 };

@@ -133,4 +133,4 @@ MW.menuHeight = 36;
 MW.menuWidth = 123;
 
 MW.calcStartTime = 10;
-MW.calcTimeOfDuration = 15;
+MW.calcTimeOfDuration = 60;
