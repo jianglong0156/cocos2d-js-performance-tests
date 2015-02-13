@@ -63,8 +63,8 @@ var SaveDataToServer = {
                 console.log("Status: Got POST response! " + xhr.statusText);
                 //cc.director.resume();
                 g_sharedGameLayer.hideAll();
-                document.getElementById("inputForm").style.display = "block";
-                document.getElementById("inputForm").getElementsByClassName("testCaseId")[0].value = self._caseId;
+
+                self.addEventWithHtml();
             }
         };
         var dataJson = this._postHeadStr + "=" + JSON.stringify(this._dataObj);
@@ -82,5 +82,11 @@ var SaveDataToServer = {
         objData[this._drawCallStr] = (0 | cc.g_NumberOfDraws);
 
         this._dataObj[this._dataObj.length] = objData;
+    },
+
+    addEventWithHtml:function()
+    {
+        document.getElementById("inputForm").style.display = "block";
+        document.getElementById("inputForm").getElementsByClassName("testCaseId")[0].value = self._caseId;
     }
 };
