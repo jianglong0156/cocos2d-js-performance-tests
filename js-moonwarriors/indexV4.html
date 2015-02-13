@@ -42,7 +42,17 @@
     <span style="font-size: large">input your device:</span>
     <input class="testCaseId" name="testCaseId" value='' type="hidden">
     <input name="deviceModel" value='' style="margin-top: 20px;width:280px;font-size: 20px; padding:5px 10px;">
-    <input type="submit"  value="确定" style="margin:20px 0 0 0;padding: 8px 14px;"/>
+    <input type="submit"  value="确定" onclick="return checkInputDevice()" style="margin:20px 0 0 0;padding: 8px 14px;"/>
+    <script>
+        function checkInputDevice() {
+            var deviceModel = document.getElementById("inputForm").getElementsByClassName("deviceModel")[0].value;
+            if (deviceModel.length <= 0)
+            {
+                return false;
+            }
+            return true;
+        }
+    </script>
 </form>
 </body>
 </html>
