@@ -5,12 +5,52 @@
         padding: 13px 28px;font-size: 40px;
     }
 </style>
-<input type="button"  value="canvas v3" onclick="jumpToCanvasV3()"/>
-<input type="button"  value="canvas v4" onclick="jumpToCanvasV4()"/>
-<input type="button"  value="webgl v3" onclick="jumpToWebglV3()"/>
-<input type="button"  value="webgl v4" onclick="jumpToWebglV4()"/>
-<input type="button"  value="showCanvasResult" onclick="showCanvasResult()"/>
-<input type="button"  value="showWebglResult" onclick="showWebglResult()"/>
+<div>
+    <h1>node num in 60fps</h1>
+    <input type="button"  value="canvas v3" onclick="jumpToNodeCanvasV3()"/>
+    <input type="button"  value="canvas v4" onclick="jumpToNodeCanvasV4()"/>
+    <input type="button"  value="webgl v3" onclick="jumpToNodeWebglV3()"/>
+    <input type="button"  value="webgl v4" onclick="jumpToNodeWebglV4()"/>
+    <input type="button"  value="showCanvasResult" onclick="showNodeCanvasResult()"/>
+    <input type="button"  value="showWebglResult" onclick="showNodeWebglResult()"/>
+</div>
+
+<div>
+    <h1>ave time per frame</h1>
+    <input type="button"  value="canvas v3" onclick="jumpToCanvasV3()"/>
+    <input type="button"  value="canvas v4" onclick="jumpToCanvasV4()"/>
+    <input type="button"  value="webgl v3" onclick="jumpToWebglV3()"/>
+    <input type="button"  value="webgl v4" onclick="jumpToWebglV4()"/>
+    <input type="button"  value="showCanvasResult" onclick="showCanvasResult()"/>
+    <input type="button"  value="showWebglResult" onclick="showWebglResult()"/>
+</div>
+<script>
+    function jumpToNodeCanvasV3()
+    {
+        location.href = location.href + "/../../../moonNodeCanvas/indexV3.html";
+    };
+    function jumpToNodeCanvasV4()
+    {
+        location.href = location.href + "/../../../moonNodeCanvas/indexV4.html";
+    };
+    function jumpToNodeWebglV3()
+    {
+        location.href = location.href + "/../../../moonNodeWebgl/indexV3.html";
+    };
+    function jumpToNodeWebglV4()
+    {
+        location.href = location.href + "/../../../moonNodeWebgl/indexV4.html";
+    };
+    function showNodeCanvasResult()
+    {
+        location.href = location.href + "/../../../moonNodeCanvas/server/showBarGraph.php";
+    };
+    function showNodeWebglResult()
+    {
+        location.href = location.href + "/../../../moonNodeWebgl/server/showBarGraph.php";
+    };
+</script>
+
 <script>
     function jumpToCanvasV3()
     {
