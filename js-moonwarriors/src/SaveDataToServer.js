@@ -41,6 +41,7 @@ var SaveDataToServer = {
         this._baseData["testSec"] = MW.calcTimeOfDuration;
         this._baseData["enemyMax"] = Level1.enemyMax;
         this._baseData["enemyOnceCreateNum"] = Level1.enemies[0].Types.length;
+        this._baseData[this._nodeHeadStr] = 0;
         this._dataObj[this._dataObj.length] = this._baseData;
 
 
@@ -67,8 +68,8 @@ var SaveDataToServer = {
                 self.addEventWithHtml();
             }
         };
+        this._dataObj[0][this._nodeHeadStr] = this._dataObj[1][this._nodeHeadStr];
         var dataJson = this._postHeadStr + "=" + JSON.stringify(this._dataObj);
-        console.log(JSON.stringify(SaveDataToServer._dataObj[1]));
         xhr.send(dataJson);
     },
 

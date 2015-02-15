@@ -3,7 +3,7 @@ include("./getDataBase.php");
 
 $db = getConnectMyDB();
 
-$resultStr = "SELECT caseID, renderMode, systemVersion, aveTime, deviceModel, enemyMax, browerType, sysOS 
+$resultStr = "SELECT caseID, renderMode, systemVersion, nodeNum, deviceModel, enemyMax, browerType, sysOS 
               FROM baseTable ORDER BY deviceModel DESC, browerType ASC, caseID ASC";
 
 $count = $db->query($resultStr);
@@ -16,7 +16,7 @@ for ($i = 0; $i + 1 < $resultLength; $i+=2)
 {
     $firstResult = $result[$i];
     $secondResult = $result[$i + 1];
-    if (count($firstResult['deviceModel']) < 0 || count($secondResult['deviceModel']) < 0 ||
+    if (count($firstResult['deviceModel']) <= 0 || count($secondResult['deviceModel']) <= 0 ||
         $firstResult['sysOS'] != $secondResult['sysOS'] || $firstResult['browerType'] != $secondResult['browerType'] ||
         $firstResult['deviceModel'] != $secondResult['deviceModel'] || $firstResult['renderMode'] != $secondResult['renderMode'])
     {
@@ -34,9 +34,9 @@ for ($i = 0; $i + 1 < $resultLength; $i+=2)
     $tempCategoriesStr = date('Ymd', $firstResult['caseID'] / 1000)."<br>".$firstResult['sysOS']."<br>".$firstResult['browerType']."<br>".$firstResult['deviceModel']."<br>".$firstResult['renderMode'];
     array_push($categoriesArr,$tempCategoriesStr);
 
-    array_push($v3DataArr,$firstResult['aveTime']);
+    array_push($v3DataArr,$firstResult['nodeNum']);
 
-    array_push($v4DataArr,$secondResult['aveTime']);
+    array_push($v4DataArr,$secondResult['nodeNum']);
 }
 
 // javascript end
@@ -63,10 +63,10 @@ echo <<< outPutGraphFlag
                 type: 'column'
             },
             title: {
-                text: 'Engine performan test'
+                text: 'Larger is Better'
             },
             subtitle: {
-                text: 'testCase: js-moonwarriors'
+                text: 'node num in 60 fps'
             },
             xAxis: {
                 categories: $categories
@@ -74,7 +74,7 @@ echo <<< outPutGraphFlag
             yAxis: {
                 min: 0,
                 title: {
-                    text: 'aveTimePerFrame (sec)'
+                    text: 'nodeNumInScene (num)'
                 }
             },
             tooltip: {

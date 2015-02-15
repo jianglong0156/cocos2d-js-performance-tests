@@ -276,7 +276,10 @@ var GameLayer = cc.Layer.extend({
         if (this._state == STATE_PLAYING) {
             if (this._totalDt > MW.calcStartTime)
             {
-                this.addDataInArr(this._updateTime/this._updateNum);
+                if (this._updateNum > 30)
+                {
+                    this.addDataInArr(this._updateTime/this._updateNum);
+                }
                 if (this._totalDt - MW.calcStartTime >= MW.calcTimeOfDuration && !this._hideAllFlag && Level1.enemies[0].Types.length <= 0)
                 {
                     this._state = STATE_GAMEOVER;

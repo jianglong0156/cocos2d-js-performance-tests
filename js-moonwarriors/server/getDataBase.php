@@ -3,7 +3,7 @@ if (!function_exists('getConnectMyDB'))
 {
     function getConnectMyDB()
     {
-        $db_name = "sqlite:./myDB.sqlite";
+        $db_name = "sqlite:./nodeNum.sqlite";
         $db = new PDO($db_name);
         if ($db){ 
             echo 'connect ok'; 
@@ -13,5 +13,4 @@ if (!function_exists('getConnectMyDB'))
         return $db;
     }
 }
-
 ?>
