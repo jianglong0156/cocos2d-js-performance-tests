@@ -158,24 +158,26 @@ var GameLayer = cc.Layer.extend({
     calcFrame:function ()
     {
         var aveUpdateNum = this._updateTime / this._updateNum;
-        if (aveUpdateNum > 0.02)
+        if (aveUpdateNum > 0.018)
         {
             this._calcIndex++;
             this._createEnemyFlag = false;
             if (this._calcIndex > 2)
             {
                 this._calcIndex = 0;
-                console.log("time:" + aveUpdateNum + " curLength:" + Level1.enemies[0].Types.length + " nodeNum:" + SaveDataToServer._dataObj[1]["nodeNum"]);
-                console.log(" _texOpaqueBatch:" + this.getActiveNum(this._texOpaqueBatch) + " _sparkBatch:" + this.getActiveNum(this._sparkBatch)
-                 + " _texTransparentBatch:" + this.getActiveNum(this._texTransparentBatch) + " _enemyNode:" + this.getActiveNum(this._enemyNode));
-                Enemy.destroyTargetNum(Level1.enemies[0].Types.length);
-
-                this._desroyContinuousNum++;
-                if (this._desroyContinuousNum == 1 && this._createContinuousNum == 1)
+                if (SaveDataToServer._dataObj.length > 1)
                 {
-                    Level1.enemies[0].Types.length = (Level1.enemies[0].Types.length / 2) | 0;
+                    console.log("time:" + aveUpdateNum + " curLength:" + Level1.enemies[0].Types.length + " nodeNum:" + SaveDataToServer._dataObj[1]["nodeNum"]);
+                    Enemy.destroyTargetNum(Level1.enemies[0].Types.length);
+
+                    this._desroyContinuousNum++;
+                    if (this._desroyContinuousNum == 1 && this._createContinuousNum == 1)
+                    {
+                        Level1.enemies[0].Types.length = (Level1.enemies[0].Types.length / 2) | 0;
+                    }
+                    this._createContinuousNum = 0;
                 }
-                this._createContinuousNum = 0;
+
             }
 
         }
@@ -183,7 +185,7 @@ var GameLayer = cc.Layer.extend({
         {
             console.log("--------------time:" + aveUpdateNum);
             this._createEnemyFlag = true;
-
+            this._calcIndex = 0;
             this._createContinuousNum++;
             this._desroyContinuousNum = 0;
 
