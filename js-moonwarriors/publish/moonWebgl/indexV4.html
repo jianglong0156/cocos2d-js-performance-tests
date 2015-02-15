@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>CocosJS - Anchors test.</title>
+    <meta name="viewport" content="user-scalable=no,width=device-width,minimal-ui=true">
+    <link rel="stylesheet" type="text/css" href="../../../src/test/engine/demos.css"/>
+    <script src="v4/all.js"></script>
+
+    <script src="src/engineAdapter/Adapter.js"></script>
+    <script src="src/Resource.js"></script>
+    <script src="src/config/GameConfig.js"></script>
+    <script src="src/config/EnemyType.js"></script>
+    <script src="src/config/Level.js"></script>
+
+
+    <script src="mainV4.js"></script>
+
+    <script src="src/Effect.js"></script>
+    <script src="src/Bullet.js"></script>
+    <script src="src/Enemy.js"></script>
+    <script src="src/Explosion.js"></script>
+    <script src="src/Ship.js"></script>
+    <script src="src/LevelManager.js"></script>
+    <script src="src/GameController.js"></script>
+    <script src="src/GameControlMenu.js"></script>
+    <script src="src/GameLayer.js"></script>
+    <script src="src/GameOver.js"></script>
+    <script src="src/AboutLayer.js"></script>
+    <script src="src/SettingsLayer.js"></script>
+    <script src="src/SysMenu.js"></script>
+    <script src="src/HitEffect.js"></script>
+    <script src="src/SparkEffect.js"></script>
+    <script src="src/Background.js"></script>
+    <script src="src/SaveDataToServer.js"></script>
+
+</head>
+<body style="margin:0; padding:0;">
+
+<canvas id="gameCanvas" width="320" height="480"></canvas>
+<form  id="inputForm" action="server/recordDevice.php" method="post" style="display:none;position: absolute;top:50%;left:50%;width:300px;height:100px;margin: -100px 0 0 -150px;" >
+    <span style="font-size: large">input your device:</span>
+    <input class="testCaseId" name="testCaseId" value='' type="hidden">
+    <input name="deviceModel" value='' style="margin-top: 20px;width:280px;font-size: 20px; padding:5px 10px;">
+    <input type="submit"  value="确定" style="margin:20px 0 0 0;padding: 8px 14px;"/>
+</form>
+</body>
+</html>

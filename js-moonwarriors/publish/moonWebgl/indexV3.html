@@ -1,0 +1,20 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Cocos2d-html5 Show Case - MoonWarriors</title>
+    <meta name="viewport" content="user-scalable=no"/>
+    <meta charset="utf-8"/>
+    <meta name="author" content="html5china"/>
+</head>
+<body>
+<canvas id="gameCanvas" width="320" height="480"></canvas>
+<form  id="inputForm" action="server/recordDevice.php" method="post" style="display:none;position: absolute;top:50%;left:50%;width:300px;height:100px;margin: -100px 0 0 -150px;" >
+    <span style="font-size: large">input your device:</span>
+    <input class="testCaseId" name="testCaseId" value='' type="hidden">
+    <input name="deviceModel" value='' style="margin-top: 20px;width:280px;font-size: 20px; padding:5px 10px;">
+    <input type="submit"  value="确定" style="margin:20px 0 0 0;padding: 8px 14px;"/>
+</form>
+<script src="v3/cocos2d-js-v3.3.js"></script>
+<script src="mainV3.js"></script>
+</body>
+</html>
