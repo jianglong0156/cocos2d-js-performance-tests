@@ -64,6 +64,7 @@ var GameLayer = cc.Layer.extend({
     _calcIndex:0,
     _desroyContinuousNum:0,
     _createContinuousNum:0,
+    _nodeNumLabel:0,
     ctor: function () {
         this._super();
         this.init();
@@ -152,6 +153,23 @@ var GameLayer = cc.Layer.extend({
 
         this.initBackground();
 
+        // There is a bug in LabelTTF native. Apparently it fails with some unicode chars.
+        this._nodeNumLabel = new cc.LabelTTF("Show node num",
+            "Arial",
+            21,
+            cc.size( MW.WIDTH * 0.85, 0 ),
+            cc.TEXT_ALIGNMENT_LEFT
+        );
+        this._nodeNumLabel.setColor(cc.color(0, 0, 0));
+        this._nodeNumLabel.attr({
+            x: winSize.width / 2,
+            y: 30,
+            anchorX: 0.5,
+            anchorY: 0.5,
+            _fillColor:"#000"
+        });
+        this.addChild(this._nodeNumLabel);
+
         return true;
     },
 
@@ -167,7 +185,7 @@ var GameLayer = cc.Layer.extend({
                 this._calcIndex = 0;
                 if (SaveDataToServer._dataObj.length > 1)
                 {
-                    console.log("time:" + aveUpdateNum + " curLength:" + Level1.enemies[0].Types.length + " nodeNum:" + SaveDataToServer._dataObj[1]["nodeNum"]);
+                    this._nodeNumLabel.setString("time:" + aveUpdateNum + " curLength:" + Level1.enemies[0].Types.length + " nodeNum:" + SaveDataToServer._dataObj[1]["nodeNum"]);
                     Enemy.destroyTargetNum(Level1.enemies[0].Types.length);
 
                     this._desroyContinuousNum++;
@@ -183,7 +201,7 @@ var GameLayer = cc.Layer.extend({
         }
         else
         {
-            console.log("--------------time:" + aveUpdateNum);
+            this._nodeNumLabel.setString("--------------time:" + aveUpdateNum);
             this._createEnemyFlag = true;
             this._calcIndex = 0;
             this._createContinuousNum++;
