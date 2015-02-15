@@ -314,6 +314,7 @@ var cc;
          */
         locale.WARN_START_ANIMATION_ON_RUNNING_DIRECTOR = "Starting animation on a running director.";
         locale.WARN_NODE_ATTRIBUTE_DOES_NOT_EXIST = "Attribute does not exist in Node object.";
+        locale.WARN_DEPRECATED_SETBLENDFUNC = "Deprecated call. Use setCompositeOperation instead.";
         //////////// Path tracing
         /**
          * A call to an empty path.getCurrentTracePosition.
@@ -6149,6 +6150,44 @@ var cc;
                 //this.actionManager && this.actionManager.pauseTarget(this);
                 //cc.eventManager.pauseTarget(this);
             };
+            /**
+             * V3 compatible method call.
+             * The preferred and more powerful way of setting a node's composite operation will be
+             * <code>setCompositeOperation</code>.
+             *
+             * @deprecated
+             * @param src_o { number|{src:number, dst:number} } webgl blending source operation or an object with
+             *   webgl blending source and destination operations.
+             * @param dst {number} webgl blending destination operation.
+             *
+             * @returns {number} a cc.render.CompositeOperation enumeration value.
+             */
+            Node.prototype.setBlendFunc = function (src_o, dst) {
+                cc.Debug.warn(cc.locale.WARN_DEPRECATED_SETBLENDFUNC);
+                var src;
+                if (typeof dst === "undefined") {
+                    dst = src_o.dst;
+                    src = src_o.src;
+                }
+                else {
+                    src = src_o;
+                }
+                if ((src === cc.SRC_ALPHA && dst === cc.ONE)) {
+                    this.setCompositeOperation(11 /* lighter */);
+                }
+                else if ((src === cc.ONE && dst === cc.ONE)) {
+                    this.setCompositeOperation(14 /* add */);
+                }
+                else if (src === cc.ZERO && dst === cc.SRC_ALPHA) {
+                    this.setCompositeOperation(5 /* destination_in */);
+                }
+                else if (src === cc.ZERO && dst === cc.ONE_MINUS_SRC_ALPHA) {
+                    this.setCompositeOperation(6 /* destination_out */);
+                }
+                else {
+                    this.setCompositeOperation(0 /* source_over */);
+                }
+            };
             /////////////// SCHEDULER METHODS END ////////////////
             /**
              * Set a bunch of properties for the node.
@@ -9295,9 +9334,9 @@ var cc;
              * @method cc.action.AnimateAction#getOneRepetitionDuration
              * @returns {number}
              */
-            //getOneRepetitionDuration():number {
-            //    return ( this._animation.getDuration() + this._delayAfterApplication ) * this._speed * cc.action.TIMEUNITS;
-            //}
+            AnimateAction.prototype.getOneRepetitionDuration = function () {
+                return (this._animation.getDuration() + this._delayAfterApplication) * this._speed * cc.action.TIMEUNITS;
+            };
             /**
              * This method does nothing.
              * {@link cc.action.Action#solveInitialValues}
@@ -12988,14 +13027,20 @@ var cc;
     cc.MenuItemLabel = MenuItemLabel;
     var MenuItemFont = (function (_super) {
         __extends(MenuItemFont, _super);
-        function MenuItemFont(initializer, callback, target) {
+        function MenuItemFont(_initializer, callback, target) {
             var _this = this;
             _super.call(this);
             this._label = null;
             this._callback = null;
             this._enabled = true;
-            var label = new cc.widget.LabelTTF();
-            label.initialize(initializer);
+            var label;
+            if (typeof _initializer === "string") {
+                label = new cc.widget.LabelTTF(_initializer, cc.MenuItemFont.DEFAULT_FONT, cc.MenuItemFont.DEFAULT_SIZE);
+            }
+            else {
+                label = new cc.widget.LabelTTF();
+                label.initialize(_initializer);
+            }
             this._label = label;
             if (callback) {
                 this._callback = target ? callback.bind(target) : callback;
@@ -13030,6 +13075,37 @@ var cc;
         MenuItemFont.prototype.setEnabled = function (b) {
             this._label.setEnabled(b);
         };
+        Object.defineProperty(MenuItemFont.prototype, "fontSize", {
+            get: function () {
+                return this._label._size;
+            },
+            set: function (v) {
+                this._label._size = v;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(MenuItemFont.prototype, "fontName", {
+            get: function () {
+                return this._label._font;
+            },
+            set: function (v) {
+                this._label._font = v;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        MenuItemFont.setFontSize = function (fontSize) {
+            cc.MenuItemFont.DEFAULT_SIZE = fontSize;
+        };
+        MenuItemFont.fontSize = function () {
+            return cc.MenuItemFont.DEFAULT_SIZE;
+        };
+        MenuItemFont.setFontName = function (name) {
+            cc.MenuItemFont.DEFAULT_FONT = name;
+        };
+        MenuItemFont.DEFAULT_SIZE = 16;
+        MenuItemFont.DEFAULT_FONT = "Arial";
         return MenuItemFont;
     })(cc.node.Node);
     cc.MenuItemFont = MenuItemFont;
@@ -13383,7 +13459,7 @@ var cc;
         var __index = 0;
         var LabelTTF = (function (_super) {
             __extends(LabelTTF, _super);
-            function LabelTTF(initializer) {
+            function LabelTTF(_initializer, font, fontSize, dimensions, halign, valign) {
                 _super.call(this, null);
                 this._text = null;
                 this._font = "Arial";
@@ -13403,6 +13479,23 @@ var cc;
                 this._horizontalAlignment = 0 /* LEFT */;
                 this._verticalAlignment = 1 /* MIDDLE */;
                 this._enabled = true;
+                var initializer;
+                if (typeof _initializer === "string") {
+                    // old calls
+                    initializer = {
+                        text: _initializer,
+                        font: typeof font !== "undefined" ? font : this._font,
+                        size: typeof fontSize !== "undefined" ? fontSize : this._size
+                    };
+                    if (typeof dimensions !== "undefined") {
+                        initializer.flowWidth = dimensions.width;
+                    }
+                    initializer.horizontalAlignment = typeof halign !== "undefined" ? halign : this._horizontalAlignment;
+                    initializer.verticalAlignment = typeof valign !== "undefined" ? valign : this._verticalAlignment;
+                }
+                else {
+                    initializer = _initializer;
+                }
                 if (initializer) {
                     this.initialize(initializer);
                     if (initializer.text) {
@@ -15256,6 +15349,25 @@ var cc;
          * @type {string}
          */
         render.RENDER_ORIGIN = "bottom";
+        function autodetectRenderer(w, h, elem) {
+            w = w || 800;
+            h = h || 600;
+            // BORROWED from Mr Doob (mrdoob.com)
+            var webgl = (function () {
+                var canvas = document.createElement("canvas");
+                try {
+                    return !!(typeof window.WebGLRenderingContext !== "undefined") && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+                }
+                catch (e) {
+                    return false;
+                }
+            })();
+            if (webgl) {
+                return new cc.render.WebGLRenderer(w, h, document.getElementById(elem));
+            }
+            return new cc.render.CanvasRenderer(w, h, document.getElementById(elem));
+        }
+        render.autodetectRenderer = autodetectRenderer;
         var Dimension = cc.math.Dimension;
         /**
          * @class cc.render.Renderer
@@ -15879,7 +15991,6 @@ var cc;
             CompositeOperation[CompositeOperation["add"] = 14] = "add";
         })(render.CompositeOperation || (render.CompositeOperation = {}));
         var CompositeOperation = render.CompositeOperation;
-        ;
         render.CanvasToComposite = {
             "source-over": 0,
             "source-out": 1,
@@ -15912,7 +16023,7 @@ var cc;
             "lighter",
             "darker",
             "xor",
-            "add"
+            "lighter"
         ];
     })(render = cc.render || (cc.render = {}));
 })(cc || (cc = {}));
@@ -24107,15 +24218,18 @@ var cc;
                 if (typeof ri.orientation === "undefined") {
                     ri.orientation = "both";
                 }
-                if (typeof ri.rendererType === "undefined") {
-                    ri.orientation = "canvas";
-                }
-                var renderer = null;
-                if (ri.rendererType === "webgl") {
-                    renderer = new cc.render.WebGLRenderer(ri.width, ri.height, document.getElementById(ri.canvasElement));
-                }
-                else {
-                    renderer = new cc.render.CanvasRenderer(ri.width, ri.height, document.getElementById(ri.canvasElement));
+                var renderer;
+                if (typeof ri.renderer === "string") {
+                    if (ri.renderer === "canvas") {
+                        renderer = new cc.render.CanvasRenderer(ri.width, ri.height, document.getElementById(ri.canvasElement));
+                    }
+                    else if (ri.renderer === "webgl") {
+                        renderer = new cc.render.WebGLRenderer(ri.width, ri.height, document.getElementById(ri.canvasElement));
+                    }
+                    else {
+                        // autodetect
+                        renderer = cc.render.autodetectRenderer(ri.width, ri.height, ri.canvasElement);
+                    }
                 }
                 this._director.setRenderer(renderer);
                 this._renderer = renderer;
@@ -25294,6 +25408,10 @@ var cc;
         return new Vector(x, y);
     }
     cc.p = p;
+    function size(w, h) {
+        return new cc.math.Dimension(w, h);
+    }
+    cc.size = size;
     /**
      * create a new Color full opaque.
      * @param r {number}
@@ -25456,7 +25574,25 @@ var cc;
             }
         };
     })();
+    function rectIntersectsRect(r0, r1) {
+        return r0.intersectsWith(r1);
+    }
+    cc.rectIntersectsRect = rectIntersectsRect;
     cc.KEY = cc.input.KEYS;
+    // blending constants. Use node.setCompositeOperation instead.
+    cc.ONE = 1;
+    cc.ZERO = 0;
+    cc.SRC_ALPHA = 0x0302;
+    cc.SRC_ALPHA_SATURATE = 0x308;
+    cc.SRC_COLOR = 0x300;
+    cc.DST_ALPHA = 0x304;
+    cc.DST_COLOR = 0x306;
+    cc.ONE_MINUS_SRC_ALPHA = 0x0303;
+    cc.ONE_MINUS_SRC_COLOR = 0x301;
+    cc.ONE_MINUS_DST_ALPHA = 0x305;
+    cc.ONE_MINUS_DST_COLOR = 0x0307;
+    cc.ONE_MINUS_CONSTANT_ALPHA = 0x8004;
+    cc.ONE_MINUS_CONSTANT_COLOR = 0x8002;
 })(cc || (cc = {}));
 
 /// <reference path="./AssetManager.ts"/>
@@ -25652,8 +25788,8 @@ var cc;
     };
     cc.node.Node.extend = _Class.extend;
     cc.node.Sprite.extend = _Class.extend;
-    cc.node.SpriteBatchNode.extend = _Class.extend;
     cc.node.FastSprite.extend = _Class.extend;
+    cc.node.SpriteBatchNode.extend = _Class.extend;
     cc.node.Scene.extend = _Class.extend;
     cc.action.Action.extend = _Class.extend;
     cc.Class = _Class;

@@ -363,7 +363,7 @@ var GameLayer = cc.Layer.extend({
 
         var aRect = a.collideRect(ax, ay);
         var bRect = b.collideRect(bx, by);
-        return ED.rectIntersectsRect(aRect, bRect);
+        return cc.rectIntersectsRect(aRect, bRect);
     },
     initBackground:function () {
         this._backSky = BackSky.getOrCreate();

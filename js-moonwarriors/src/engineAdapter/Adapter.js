@@ -454,29 +454,7 @@ ED.LoaderScene = {
     }
 };
 
-if (ED.version === EDV4)
-{
-    cc.spriteFrameCache.getSpriteFrame = cc.plugin.asset.AssetManager.getSpriteFrame;
-}
 
-if (ED.version === EDV3)
-{
-    ED.animationCache = cc.animationCache;
-}
-else
-{
-    ED.animationCache = {
-        _animations: {},
-        addAnimation:function (animation, name) {
-            this._animations[name] = animation;
-        },
-        getAnimation:function (name) {
-            if (this._animations[name])
-                return this._animations[name];
-            return null;
-        }
-    }
-}
 if (ED.version === EDV4) {
     window["CocosEngine"] = "Cocos2d-JS v4";
 }
@@ -506,30 +484,6 @@ else
     }
 }
 
-if (ED.version === EDV4)
-{
-    ED.rectIntersectsRect = function (ra, rb) {
-        return ra.intersectsWith(rb);
-    };
-    cc.rectIntersectsRect = ED.rectIntersectsRect;
-}
-else
-{
-    ED.rectIntersectsRect = cc.rectIntersectsRect;
-}
-
-ED.setFrames = function (animation, animFrames){
-    if (ED.version === EDV3)
-    {
-        for (var frameindex in animFrames)
-            animation.addSpriteFrame(animFrames[frameindex]);
-    }
-    else
-    {
-        animation.addFrames(animFrames);
-    }
-
-};
 ED.getRenderStr = function ()
 {
     if (ED.version === EDV3)

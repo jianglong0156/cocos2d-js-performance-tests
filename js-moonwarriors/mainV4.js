@@ -90,7 +90,7 @@ window.addEventListener("DOMContentLoaded", function() {
             scaleStrategy: "scale_aspect",
             canvasPosition: "center",
             canvasElement: "gameCanvas",
-            rendererType:"canvas"
+            renderer:"canvas"
         });
         //resizeWithBrowserSize(true).  --> implicit yes.
         ED.LoaderScene.preload(
