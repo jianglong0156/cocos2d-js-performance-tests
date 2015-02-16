@@ -280,7 +280,7 @@ var GameLayer = cc.Layer.extend({
                 {
                     this.addDataInArr(this._updateTime/this._updateNum);
                 }
-                if (this._totalDt - MW.calcStartTime >= MW.calcTimeOfDuration && !this._hideAllFlag && Level1.enemies[0].Types.length <= 0)
+                if ((this._totalDt - MW.calcStartTime >= MW.calcTimeOfDuration && !this._hideAllFlag) || Level1.enemies[0].Types.length <= 0)
                 {
                     this._state = STATE_GAMEOVER;
                     //cc.director.pause();
