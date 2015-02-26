@@ -21,6 +21,7 @@ var SaveDataToServer = {
     _caseId: "",
     _sysBrowerType: "",
     _sysOS: "",
+    _nativeUrl:"",
     init: function () {
         this._initFlag = true;
         this._dataObj = [];
@@ -43,27 +44,26 @@ var SaveDataToServer = {
         this._baseData["enemyOnceCreateNum"] = Level1.enemies[0].Types.length;
         this._dataObj[this._dataObj.length] = this._baseData;
 
+        if (cc.isNative)
+        {
+            this._nativeUrl = "http://benchmark.cocos2d-x.org/moonTest/moonWebgl/";
+        }
+        else
+        {
+            this._nativeUrl = "";
+        }
 
     },
     sendDataToNet: function () {
         var self = this;
-        var url = "";
-        if (cc.isNative)
-        {
-            url = "http://benchmark.cocos2d-x.org/moonTest/moonCanvas/server/saveData.php";
-        }
-        else
-        {
-            url = "server/saveData.php";
-        }
         var postDataStr = this._postHeadStr + "=" + JSON.stringify(this._dataObj);
-        this.sendPostData(postDataStr, url, function(){
+        this.sendPostData(postDataStr, self._nativeUrl + "server/saveData.php", function(){
             if (cc.isNative)
             {
                 if(cc.sys.os == cc.sys.OS_ANDROID){
                     var stringModel = jsb.reflection.callStaticMethod("org/cocos2dx/js_moonwarriors/DeviceHelper", "getDeviceModel", "()Ljava/lang/String;");
                     var postDataStr = "testCaseId=" + this._caseId + "&deviceModel=" + stringModel;
-                    this.sendPostData(postDataStr, "http://benchmark.cocos2d-x.org/moonTest/moonCanvas/server/recordDevice.php", function(){
+                    this.sendPostData(postDataStr, self._nativeUrl + "server/recordDevice.php", function(){
                         g_sharedGameLayer.hideAll();
                     });
                 }
