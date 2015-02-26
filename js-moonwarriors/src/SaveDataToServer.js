@@ -46,13 +46,17 @@ var SaveDataToServer = {
 
 
     },
-    getXMLHttpRequest: function () {
-        return window.XMLHttpRequest ? new window.XMLHttpRequest() : new ActiveXObject("MSXML2.XMLHTTP");
-    },
     sendDataToNet: function () {
-        var xhr = this.getXMLHttpRequest();
+        var xhr = ED.getXMLHttpRequest();
+        if (cc.isNative)
+        {
+            xhr.open("POST", "http://benchmark.cocos2d-x.org/moonTest/moonCanvas/server/saveData.php");
+        }
+        else
+        {
+            xhr.open("POST", "server/saveData.php");
+        }
 
-        xhr.open("POST", "server/saveData.php");
         //xhr.open("POST", "http://localhost:63342/server/saveData.php");
         //set Content-Type "application/x-www-form-urlencoded" to post form data
         //mulipart/form-data for upload
@@ -60,8 +64,8 @@ var SaveDataToServer = {
         var self = this;
         xhr.onreadystatechange = function () {
             if (xhr.readyState == 4 && (xhr.status >= 200 && xhr.status <= 207)) {
-                console.log("POST Response (100 chars):  \n" + xhr.responseText);
-                console.log("Status: Got POST response! " + xhr.statusText);
+                //console.log("POST Response (100 chars):  \n" + xhr.responseText);
+                //console.log("Status: Got POST response! " + xhr.statusText);
                 //cc.director.resume();
                 g_sharedGameLayer.hideAll();
 
@@ -88,6 +92,10 @@ var SaveDataToServer = {
 
     addEventWithHtml:function()
     {
+        if (cc.isNative)
+        {
+            return;
+        }
         document.getElementById("inputForm").style.display = "block";
         document.getElementById("inputForm").getElementsByClassName("testCaseId")[0].value = this._caseId;
     }
