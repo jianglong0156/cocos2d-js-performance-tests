@@ -46,33 +46,34 @@ var SaveDataToServer = {
 
     },
     sendDataToNet: function () {
-        var xhr = ED.getXMLHttpRequest();
+        var self = this;
+        var url = "";
         if (cc.isNative)
         {
-            xhr.open("POST", "http://benchmark.cocos2d-x.org/moonTest/moonCanvas/server/saveData.php");
+            url = "http://benchmark.cocos2d-x.org/moonTest/moonCanvas/server/saveData.php";
         }
         else
         {
-            xhr.open("POST", "server/saveData.php");
+            url = "server/saveData.php";
         }
-
-        //xhr.open("POST", "http://localhost:63342/server/saveData.php");
-        //set Content-Type "application/x-www-form-urlencoded" to post form data
-        //mulipart/form-data for upload
-        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-        var self = this;
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState == 4 && (xhr.status >= 200 && xhr.status <= 207)) {
-                //console.log("POST Response (100 chars):  \n" + xhr.responseText);
-                //console.log("Status: Got POST response! " + xhr.statusText);
-                //cc.director.resume();
+        var postDataStr = this._postHeadStr + "=" + JSON.stringify(this._dataObj);
+        this.sendPostData(postDataStr, url, function(){
+            if (cc.isNative)
+            {
+                if(cc.sys.os == cc.sys.OS_ANDROID){
+                    var stringModel = jsb.reflection.callStaticMethod("org/cocos2dx/js_moonwarriors/DeviceHelper", "getDeviceModel", "()Ljava/lang/String;");
+                    var postDataStr = "testCaseId=" + this._caseId + "&deviceModel=" + stringModel;
+                    this.sendPostData(postDataStr, "http://benchmark.cocos2d-x.org/moonTest/moonCanvas/server/recordDevice.php", function(){
+                        g_sharedGameLayer.hideAll();
+                    });
+                }
+            }
+            else
+            {
                 g_sharedGameLayer.hideAll();
-
                 self.addEventWithHtml();
             }
-        };
-        var dataJson = this._postHeadStr + "=" + JSON.stringify(this._dataObj);
-        xhr.send(dataJson);
+        });
     },
 
     addData: function (timeData, nodeNum, drawCallNum) {
@@ -84,16 +85,28 @@ var SaveDataToServer = {
         objData[this._timeHeadStr] = timeData.toFixed(3);
         objData[this._nodeHeadStr] = nodeNum;
         objData[this._drawCallStr] = (0 | cc.g_NumberOfDraws);
-
         this._dataObj[this._dataObj.length] = objData;
     },
 
+    sendPostData: function (postDataStr, url, callback) {
+        var xhr = ED.getXMLHttpRequest();
+        xhr.open("POST", url);
+
+        //xhr.open("POST", "http://localhost:63342/server/saveData.php");
+        //set Content-Type "application/x-www-form-urlencoded" to post form data
+        //mulipart/form-data for upload
+        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && (xhr.status >= 200 && xhr.status <= 207)) {
+                callback();
+            }
+        };
+        //alert(postDataStr);
+        xhr.send(postDataStr);
+    },
     addEventWithHtml:function()
     {
-        if (cc.isNative)
-        {
-            return;
-        }
         document.getElementById("inputForm").style.display = "block";
         document.getElementById("inputForm").getElementsByClassName("testCaseId")[0].value = this._caseId;
     }
