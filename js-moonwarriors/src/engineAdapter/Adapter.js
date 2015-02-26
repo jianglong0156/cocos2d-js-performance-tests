@@ -520,3 +520,15 @@ else
     ED.FastSprite = cc.node.FastSprite;
     //ED.FastSprite = cc.Sprite;
 }
+
+ED.getXMLHttpRequest = function ()
+{
+    if (cc && cc.loader && cc.loader.getXMLHttpRequest)
+    {
+        return cc.loader.getXMLHttpRequest();
+    }
+    else
+    {
+        return window.XMLHttpRequest ? new window.XMLHttpRequest() : new ActiveXObject("MSXML2.XMLHTTP");
+    }
+};
