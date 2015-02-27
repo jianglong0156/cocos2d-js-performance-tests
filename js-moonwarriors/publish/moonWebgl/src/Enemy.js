@@ -46,8 +46,8 @@ var Enemy = ED.FastSprite.extend({
     _hurtColorLife:0,
     _enemyIndex:0,
     ctor:function (arg) {
-        ED.enemyInit(this,"#"+arg.textureName);
-        //ED._super(this,"#"+arg.textureName);
+        this._super("#"+arg.textureName);
+        //this._super("#"+arg.textureName);
 
         if (arg.textureName != "E4.png")
             this.flippedY = true;

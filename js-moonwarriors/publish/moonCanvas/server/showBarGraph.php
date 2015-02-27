@@ -1,11 +1,8 @@
 <?php
-$db_name = "sqlite:./myDB.sqlite";
-$db = new PDO($db_name);
-if ($db){ 
-    echo 'connect ok'; 
-}else{ 
-    echo 'connect bad'; 
-}
+include("./getDataBase.php");
+
+$db = getConnectMyDB();
+
 $resultStr = "SELECT caseID, renderMode, systemVersion, aveTime, deviceModel, enemyMax, browerType, sysOS 
               FROM baseTable ORDER BY deviceModel DESC, browerType ASC, caseID ASC";
 
@@ -48,6 +45,7 @@ for ($i = 0; $i + 1 < $resultLength; $i+=2)
 <!doctype html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
   <script type="text/javascript" src="http://cdn.hcharts.cn/jquery/jquery-1.8.3.min.js"></script>
   <script type="text/javascript" src="http://cdn.hcharts.cn/highcharts/highcharts.js"></script>
   <script type="text/javascript" src="http://cdn.hcharts.cn/highcharts/exporting.js"></script>

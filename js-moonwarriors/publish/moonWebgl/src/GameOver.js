@@ -35,7 +35,7 @@ var GameOver = cc.Layer.extend({
     _lbScore:0,
 
     ctor:function(){
-        ED._super(this);
+        this._super();
         this.init();
     },
     init:function () {

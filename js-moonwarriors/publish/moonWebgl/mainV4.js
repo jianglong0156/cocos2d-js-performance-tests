@@ -77,8 +77,12 @@
  */
 
 window.addEventListener("DOMContentLoaded", function() {
-    var gameObj = ED.gameObj = new cc.game.Game();
 
+    cc.action.setTimeReferenceInSeconds();
+    cc.render.RENDER_ORIGIN="bottom";
+    cc.node.DEFAULT_ANCHOR_POSITION=        new cc.math.Vector(0.5,0.5);
+    cc.node.DEFAULT_ANCHOR_TRANSFORMATION=  new cc.math.Vector(0.5,0.5);
+    var gameObj = ED.gameObj = new cc.game.Game();
         // adjustViewport(true).    --> developer decision to add it to the html document. why force ?
     gameObj.setDesignResolutionSize({
             width: 480,
@@ -86,7 +90,7 @@ window.addEventListener("DOMContentLoaded", function() {
             scaleStrategy: "scale_aspect",
             canvasPosition: "center",
             canvasElement: "gameCanvas",
-            rendererType:"webgl"
+            renderer:"webgl"
         });
         //resizeWithBrowserSize(true).  --> implicit yes.
         ED.LoaderScene.preload(
@@ -134,7 +138,6 @@ window.addEventListener("DOMContentLoaded", function() {
          *
          */
         function onEnd(game) {
-            cc.render.RENDER_ORIGIN = "top";
             // prefer this form:
             game.runScene(SysMenu.scene());
 

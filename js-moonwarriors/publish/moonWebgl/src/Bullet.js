@@ -42,7 +42,7 @@ var Bullet = cc.Sprite.extend({
     attackMode:MW.ENEMY_MOVE_TYPE.NORMAL,
     parentType:MW.BULLET_TYPE.PLAYER,
     ctor:function (bulletSpeed, weaponType, attackMode) {
-        ED._super(this,"res/" + weaponType);
+        this._super("res/" + weaponType);
         this.setAnchorPoint(0.5, 0.5);
         this.yVelocity = -bulletSpeed;
         this.attackMode = attackMode;

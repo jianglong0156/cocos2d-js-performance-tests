@@ -59,13 +59,13 @@ var GameLayer = cc.Layer.extend({
     _enemyNode: null,
     _hideAllFlag:false,
     ctor: function () {
-        ED._super(this);
+        this._super();
         this.init();
     },
     init: function () {
-        cc.spriteFrameCache.addSpriteFrames(res.enemys_plist);
+        //cc.spriteFrameCache.addSpriteFrames(res.enemys_plist);
         //cc.spriteFrameCache.addSpriteFrames(res.textureTransparentPack_plist);
-        //cc.spriteFrameCache.addSpriteFrames(res.textureOpaquePack_plist);
+        cc.spriteFrameCache.addSpriteFrames(res.textureOpaquePack_plist);
         //cc.spriteFrameCache.addSpriteFrames(res.b01_plist);
 
         // reset global values
@@ -93,7 +93,7 @@ var GameLayer = cc.Layer.extend({
         this._texTransparentBatch = new cc.Node();
         this.addChild(this._texTransparentBatch);
 
-        this._enemyNode = new cc.SpriteBatchNode(res.enemys_png);
+        this._enemyNode = new cc.SpriteBatchNode(res.textureTransparentPack_png);
         this.addChild(this._enemyNode);
 
         winSize = cc.director.getWinSize();
@@ -363,7 +363,7 @@ var GameLayer = cc.Layer.extend({
 
         var aRect = a.collideRect(ax, ay);
         var bRect = b.collideRect(bx, by);
-        return ED.rectIntersectsRect(aRect, bRect);
+        return cc.rectIntersectsRect(aRect, bRect);
     },
     initBackground:function () {
         this._backSky = BackSky.getOrCreate();

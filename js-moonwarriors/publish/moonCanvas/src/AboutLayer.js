@@ -32,7 +32,7 @@
 
 var AboutLayer = cc.Layer.extend({
     ctor:function(){
-        ED._super(this);
+        this._super();
         this.init();
     },
     init:function () {

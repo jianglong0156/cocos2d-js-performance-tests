@@ -4,13 +4,9 @@ function n(){
     //echo '\n';
 }
 // open database
-$db_name = "sqlite:./myDB.sqlite";
-$db = new PDO($db_name);
-if ($db){ 
-    echo 'connect ok'; 
-}else{ 
-    echo 'connect bad'; 
-}
+include("./getDataBase.php");
+
+$db = getConnectMyDB();
 n();
 
 $db->exec("ALTER TABLE baseTable ADD 'aveTime' varchar(15)");

@@ -34,11 +34,11 @@ var SysMenu = cc.Layer.extend({
     _ship:null,
 
     ctor:function () {
-        ED._super(this);
+        this._super();
         this.init();
     },
     init:function () {
-        //cc.spriteFrameCache.addSpriteFrames(res.textureTransparentPack_plist);
+        cc.spriteFrameCache.addSpriteFrames(res.textureTransparentPack_plist);
 
         winSize = cc.director.getWinSize();
         var sp = new cc.Sprite(res.loading_png);
