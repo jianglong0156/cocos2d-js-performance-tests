@@ -21,10 +21,11 @@ var SaveDataToServer = {
     _caseId: "",
     _sysBrowerType: "",
     _sysOS: "",
+    _nativeUrl:"",
     init: function () {
         this._initFlag = true;
         this._dataObj = [];
-        this._versionStr = window["CocosEngine"];
+        this._versionStr = cc.ENGINE_VERSION;
 
         this._renderMode = ED.getRenderStr();
         this._caseId = new Date().getTime();
@@ -44,37 +45,39 @@ var SaveDataToServer = {
         this._baseData[this._nodeHeadStr] = 0;
         this._dataObj[this._dataObj.length] = this._baseData;
 
-
-    },
-    sendDataToNet: function () {
-        var xhr = ED.getXMLHttpRequest();
-        if (cc.isNative)
+        if (cc.sys.isNative)
         {
-            xhr.open("POST", "http://benchmark.cocos2d-x.org/moonTest/moonCanvas/server/saveData.php");
+            this._nativeUrl = "http://benchmark.cocos2d-x.org/moonTest/moonWebgl/";
         }
         else
         {
-            xhr.open("POST", "server/saveData.php");
+            this._nativeUrl = "";
         }
 
-        //xhr.open("POST", "http://localhost:63342/server/saveData.php");
-        //set Content-Type "application/x-www-form-urlencoded" to post form data
-        //mulipart/form-data for upload
-        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+    },
+    sendDataToNet: function () {
         var self = this;
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState == 4 && (xhr.status >= 200 && xhr.status <= 207)) {
-                //console.log("POST Response (100 chars):  \n" + xhr.responseText);
-                //console.log("Status: Got POST response! " + xhr.statusText);
-                //cc.director.resume();
+        this._dataObj[0][this._nodeHeadStr] = this._dataObj[1][this._nodeHeadStr];
+        var postDataStr = this._postHeadStr + "=" + JSON.stringify(this._dataObj);
+        this.sendPostData(postDataStr, self._nativeUrl + "server/saveData.php", function(){
+            if (cc.sys.isNative)
+            {
+                if(cc.sys.os == cc.sys.OS_ANDROID){
+                    //jsb.reflection.callStaticMethod("org/cocos2dx/js_moonwarriors/AppActivity", "showAlertDialog", "(Ljava/lang/String;Ljava/lang/String;)V", "title", "hahahahha");
+                    cc.log("jsb.reflection.callStaticMethod:" + jsb.reflection.callStaticMethod);
+                    var stringModel = jsb.reflection.callStaticMethod("org/cocos2dx/js_moonwarriors/DeviceHelper", "getDeviceModel", "()Ljava/lang/String;");
+                    var postDataStr = "testCaseId=" + self._caseId + "&deviceModel=" + stringModel;
+                    self.sendPostData(postDataStr, self._nativeUrl + "server/recordDevice.php", function(){
+                        g_sharedGameLayer.hideAll();
+                    });
+                }
+            }
+            else
+            {
                 g_sharedGameLayer.hideAll();
-
                 self.addEventWithHtml();
             }
-        };
-        this._dataObj[0][this._nodeHeadStr] = this._dataObj[1][this._nodeHeadStr];
-        var dataJson = this._postHeadStr + "=" + JSON.stringify(this._dataObj);
-        xhr.send(dataJson);
+        });
     },
 
     addData: function (timeData, nodeNum, drawCallNum) {
@@ -90,12 +93,25 @@ var SaveDataToServer = {
         this._dataObj[1] = objData;
     },
 
+    sendPostData: function (postDataStr, url, callback) {
+        var xhr = ED.getXMLHttpRequest();
+        xhr.open("POST", url);
+
+        //xhr.open("POST", "http://localhost:63342/server/saveData.php");
+        //set Content-Type "application/x-www-form-urlencoded" to post form data
+        //mulipart/form-data for upload
+        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && (xhr.status >= 200 && xhr.status <= 207)) {
+                callback();
+            }
+        };
+        //alert(postDataStr);
+        xhr.send(postDataStr);
+    },
     addEventWithHtml:function()
     {
-        if (cc.isNative)
-        {
-            return;
-        }
         document.getElementById("inputForm").style.display = "block";
         document.getElementById("inputForm").getElementsByClassName("testCaseId")[0].value = this._caseId;
     }
