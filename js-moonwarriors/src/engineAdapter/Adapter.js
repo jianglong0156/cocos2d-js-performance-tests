@@ -456,7 +456,7 @@ ED.LoaderScene = {
 
 
 if (ED.version === EDV4) {
-    window["CocosEngine"] = "Cocos2d-JS v4";
+    cc.ENGINE_VERSION = "Cocos2d-JS v4";
 }
 
 // v4 current is same with v3 20150213

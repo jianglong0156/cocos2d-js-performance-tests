@@ -25,7 +25,7 @@ var SaveDataToServer = {
     init: function () {
         this._initFlag = true;
         this._dataObj = [];
-        this._versionStr = window["CocosEngine"];
+        this._versionStr = cc.ENGINE_VERSION;
 
         this._renderMode = ED.getRenderStr();
         this._caseId = new Date().getTime();
@@ -44,7 +44,7 @@ var SaveDataToServer = {
         this._baseData["enemyOnceCreateNum"] = Level1.enemies[0].Types.length;
         this._dataObj[this._dataObj.length] = this._baseData;
 
-        if (cc.isNative)
+        if (cc.sys.isNative)
         {
             this._nativeUrl = "http://benchmark.cocos2d-x.org/moonTest/moonWebgl/";
         }
@@ -58,12 +58,14 @@ var SaveDataToServer = {
         var self = this;
         var postDataStr = this._postHeadStr + "=" + JSON.stringify(this._dataObj);
         this.sendPostData(postDataStr, self._nativeUrl + "server/saveData.php", function(){
-            if (cc.isNative)
+            if (cc.sys.isNative)
             {
                 if(cc.sys.os == cc.sys.OS_ANDROID){
+                    //jsb.reflection.callStaticMethod("org/cocos2dx/js_moonwarriors/AppActivity", "showAlertDialog", "(Ljava/lang/String;Ljava/lang/String;)V", "title", "hahahahha");
+                    cc.log("jsb.reflection.callStaticMethod:" + jsb.reflection.callStaticMethod);
                     var stringModel = jsb.reflection.callStaticMethod("org/cocos2dx/js_moonwarriors/DeviceHelper", "getDeviceModel", "()Ljava/lang/String;");
-                    var postDataStr = "testCaseId=" + this._caseId + "&deviceModel=" + stringModel;
-                    this.sendPostData(postDataStr, self._nativeUrl + "server/recordDevice.php", function(){
+                    var postDataStr = "testCaseId=" + self._caseId + "&deviceModel=" + stringModel;
+                    self.sendPostData(postDataStr, self._nativeUrl + "server/recordDevice.php", function(){
                         g_sharedGameLayer.hideAll();
                     });
                 }
