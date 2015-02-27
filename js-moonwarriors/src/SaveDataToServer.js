@@ -46,11 +46,11 @@ var SaveDataToServer = {
 
         if (cc.sys.isNative)
         {
-            this._nativeUrl = "http://benchmark.cocos2d-x.org/moonTest/moonWebgl/";
+            this._nativeUrl = "http://192.168.52.34/moonTest/localTest1/";
         }
         else
         {
-            this._nativeUrl = "";
+            this._nativeUrl = "http://192.168.52.34/moonTest/localTest1/";
         }
 
     },
