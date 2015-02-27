@@ -21,10 +21,11 @@ var SaveDataToServer = {
     _caseId: "",
     _sysBrowerType: "",
     _sysOS: "",
+    _nativeUrl:"",
     init: function () {
         this._initFlag = true;
         this._dataObj = [];
-        this._versionStr = window["CocosEngine"];
+        this._versionStr = cc.ENGINE_VERSION;
 
         this._renderMode = ED.getRenderStr();
         this._caseId = new Date().getTime();
@@ -43,32 +44,38 @@ var SaveDataToServer = {
         this._baseData["enemyOnceCreateNum"] = Level1.enemies[0].Types.length;
         this._dataObj[this._dataObj.length] = this._baseData;
 
+        if (cc.sys.isNative)
+        {
+            this._nativeUrl = "http://benchmark.cocos2d-x.org/moonTest/moonWebgl/";
+        }
+        else
+        {
+            this._nativeUrl = "";
+        }
 
-    },
-    getXMLHttpRequest: function () {
-        return window.XMLHttpRequest ? new window.XMLHttpRequest() : new ActiveXObject("MSXML2.XMLHTTP");
     },
     sendDataToNet: function () {
-        var xhr = this.getXMLHttpRequest();
-
-        xhr.open("POST", "server/saveData.php");
-        //xhr.open("POST", "http://localhost:63342/server/saveData.php");
-        //set Content-Type "application/x-www-form-urlencoded" to post form data
-        //mulipart/form-data for upload
-        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
         var self = this;
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState == 4 && (xhr.status >= 200 && xhr.status <= 207)) {
-                console.log("POST Response (100 chars):  \n" + xhr.responseText);
-                console.log("Status: Got POST response! " + xhr.statusText);
-                //cc.director.resume();
+        var postDataStr = this._postHeadStr + "=" + JSON.stringify(this._dataObj);
+        this.sendPostData(postDataStr, self._nativeUrl + "server/saveData.php", function(){
+            if (cc.sys.isNative)
+            {
+                if(cc.sys.os == cc.sys.OS_ANDROID){
+                    //jsb.reflection.callStaticMethod("org/cocos2dx/js_moonwarriors/AppActivity", "showAlertDialog", "(Ljava/lang/String;Ljava/lang/String;)V", "title", "hahahahha");
+                    cc.log("jsb.reflection.callStaticMethod:" + jsb.reflection.callStaticMethod);
+                    var stringModel = jsb.reflection.callStaticMethod("org/cocos2dx/js_moonwarriors/DeviceHelper", "getDeviceModel", "()Ljava/lang/String;");
+                    var postDataStr = "testCaseId=" + self._caseId + "&deviceModel=" + stringModel;
+                    self.sendPostData(postDataStr, self._nativeUrl + "server/recordDevice.php", function(){
+                        g_sharedGameLayer.hideAll();
+                    });
+                }
+            }
+            else
+            {
                 g_sharedGameLayer.hideAll();
-
                 self.addEventWithHtml();
             }
-        };
-        var dataJson = this._postHeadStr + "=" + JSON.stringify(this._dataObj);
-        xhr.send(dataJson);
+        });
     },
 
     addData: function (timeData, nodeNum, drawCallNum) {
@@ -80,10 +87,26 @@ var SaveDataToServer = {
         objData[this._timeHeadStr] = timeData.toFixed(3);
         objData[this._nodeHeadStr] = nodeNum;
         objData[this._drawCallStr] = (0 | cc.g_NumberOfDraws);
-
         this._dataObj[this._dataObj.length] = objData;
     },
 
+    sendPostData: function (postDataStr, url, callback) {
+        var xhr = ED.getXMLHttpRequest();
+        xhr.open("POST", url);
+
+        //xhr.open("POST", "http://localhost:63342/server/saveData.php");
+        //set Content-Type "application/x-www-form-urlencoded" to post form data
+        //mulipart/form-data for upload
+        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && (xhr.status >= 200 && xhr.status <= 207)) {
+                callback();
+            }
+        };
+        //alert(postDataStr);
+        xhr.send(postDataStr);
+    },
     addEventWithHtml:function()
     {
         document.getElementById("inputForm").style.display = "block";

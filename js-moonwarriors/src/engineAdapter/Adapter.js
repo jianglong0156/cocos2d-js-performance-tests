@@ -456,7 +456,7 @@ ED.LoaderScene = {
 
 
 if (ED.version === EDV4) {
-    window["CocosEngine"] = "Cocos2d-JS v4";
+    cc.ENGINE_VERSION = "Cocos2d-JS v4";
 }
 
 // v4 current is same with v3 20150213
@@ -520,3 +520,15 @@ else
     ED.FastSprite = cc.node.FastSprite;
     //ED.FastSprite = cc.Sprite;
 }
+
+ED.getXMLHttpRequest = function ()
+{
+    if (cc && cc.loader && cc.loader.getXMLHttpRequest)
+    {
+        return cc.loader.getXMLHttpRequest();
+    }
+    else
+    {
+        return window.XMLHttpRequest ? new window.XMLHttpRequest() : new ActiveXObject("MSXML2.XMLHTTP");
+    }
+};
