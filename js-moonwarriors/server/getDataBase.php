@@ -1,4 +1,5 @@
 <?php
+header("Access-Control-Allow-Origin: *");
 if (!function_exists('getConnectMyDB'))
 {
     function getConnectMyDB()
