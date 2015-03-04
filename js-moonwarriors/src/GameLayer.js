@@ -175,6 +175,10 @@ var GameLayer = cc.Layer.extend({
 
     calcFrame:function ()
     {
+        if (this._state != STATE_PLAYING) {
+            return;
+        }
+
         var aveUpdateNum = this._updateTime / this._updateNum;
         if (aveUpdateNum > 0.018)
         {
@@ -183,17 +187,25 @@ var GameLayer = cc.Layer.extend({
             if (this._calcIndex > 2)
             {
                 this._calcIndex = 0;
+                this._desroyContinuousNum++;
                 if (SaveDataToServer._dataObj.length > 1)
                 {
                     this._nodeNumLabel.setString("time:" + aveUpdateNum + " curLength:" + Level1.enemies[0].Types.length + " nodeNum:" + SaveDataToServer._dataObj[1]["nodeNum"]);
                     Enemy.destroyTargetNum(Level1.enemies[0].Types.length);
-
-                    this._desroyContinuousNum++;
                     if (this._desroyContinuousNum == 1 && this._createContinuousNum == 1)
                     {
                         Level1.enemies[0].Types.length = (Level1.enemies[0].Types.length / 2) | 0;
                     }
                     this._createContinuousNum = 0;
+                }
+                // low device, avoid too long test time
+                if (this._desroyContinuousNum > 60)
+                {
+                    if (SaveDataToServer._dataObj.length <= 0)
+                    {
+                        this.addDataInArr(this._updateTime/this._updateNum);
+                    }
+                    Level1.enemies[0].Types.length = 0;
                 }
 
             }
@@ -229,6 +241,12 @@ var GameLayer = cc.Layer.extend({
         {
             cc.director.pause();
         }
+    },
+
+    testOver:function() {
+        this._state = STATE_GAMEOVER;
+        SaveDataToServer.sendDataToNet();
+        this._nodeNumLabel.setString("Please wait! Send data to server...");
     },
 
     processEvent:function (event) {
@@ -282,9 +300,7 @@ var GameLayer = cc.Layer.extend({
                 }
                 if ((this._totalDt - MW.calcStartTime >= MW.calcTimeOfDuration && !this._hideAllFlag) || Level1.enemies[0].Types.length <= 0)
                 {
-                    this._state = STATE_GAMEOVER;
-                    //cc.director.pause();
-                    SaveDataToServer.sendDataToNet();
+                    this.testOver();
                 }
             }
 
@@ -318,6 +334,7 @@ var GameLayer = cc.Layer.extend({
             selChild.setVisible(false);
         }
         this._hideAllFlag = true;
+        this._nodeNumLabel.setString("Test over! Input your Devices");
     },
     checkIsCollide:function () {
         var selChild, bulletChild;
