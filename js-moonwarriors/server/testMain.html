@@ -6,6 +6,16 @@
     }
 </style>
 <div>
+    <h1>ave time per frame</h1>
+    <input type="button"  value="canvas v3" onclick="jumpToCanvasV3()"/>
+    <input type="button"  value="canvas v4" onclick="jumpToCanvasV4()"/>
+    <input type="button"  value="webgl v3" onclick="jumpToWebglV3()"/>
+    <input type="button"  value="webgl v4" onclick="jumpToWebglV4()"/>
+    <input type="button"  value="showCanvasResult" onclick="showCanvasResult()"/>
+    <input type="button"  value="showWebglResult" onclick="showWebglResult()"/>
+</div>
+
+<div>
     <h1>node num in 60fps</h1>
     <input type="button"  value="canvas v3" onclick="jumpToNodeCanvasV3()"/>
     <input type="button"  value="canvas v4" onclick="jumpToNodeCanvasV4()"/>
@@ -16,14 +26,41 @@
 </div>
 
 <div>
-    <h1>ave time per frame</h1>
-    <input type="button"  value="canvas v3" onclick="jumpToCanvasV3()"/>
-    <input type="button"  value="canvas v4" onclick="jumpToCanvasV4()"/>
-    <input type="button"  value="webgl v3" onclick="jumpToWebglV3()"/>
-    <input type="button"  value="webgl v4" onclick="jumpToWebglV4()"/>
-    <input type="button"  value="showCanvasResult" onclick="showCanvasResult()"/>
-    <input type="button"  value="showWebglResult" onclick="showWebglResult()"/>
+    <h1>localTest</h1>
+    <input type="button"  value="download v3 aveTime jsb" onclick="jumpToAveTimeJSBV3()"/>
+    <input type="button"  value="download v4 aveTime crosswalk" onclick="jumpToAveTimeCrosswalkV4()"/>
+    <input type="button"  value="download v3 nodeNum jsb" onclick="jumpToNodeNumJSBV3()"/>
+    <input type="button"  value="download v4 nodeNum crosswalk" onclick="jumpToNodeNumCrosswalkV4()"/>
+    <input type="button"  value="showNodeNumJSB" onclick="showNodeNumJSB()"/>
+    <input type="button"  value="showAveTimeJSB" onclick="showAveTimeJSB()"/>
 </div>
+<script>
+    function jumpToAveTimeJSBV3()
+    {
+        location.href = location.href + "/../../../localTest1/JSMoonwarriors.apk";
+    };
+    function jumpToAveTimeCrosswalkV4()
+    {
+        location.href = location.href + "/../../../localTest1/Cocosv4test1_0.0.0.1_arm.apk";
+    };
+    function jumpToNodeNumJSBV3()
+    {
+        location.href = location.href + "/../../../localTest2/JSMoonwarriors2.apk";
+    };
+    function jumpToNodeNumCrosswalkV4()
+    {
+        location.href = location.href + "/../../../localTest2/Cocosv4test2_0.0.0.1_arm.apk";
+    };
+    function showNodeNumJSB()
+    {
+        location.href = location.href + "/../../../localTest1/server/showBarGraph.php";
+    };
+    function showAveTimeJSB()
+    {
+        location.href = location.href + "/../../../localTest2/server/showBarGraph.php";
+    };
+</script>
+
 <script>
     function jumpToNodeCanvasV3()
     {

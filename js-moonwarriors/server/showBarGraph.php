@@ -18,7 +18,7 @@ for ($i = 0; $i + 1 < $resultLength; $i+=2)
     $secondResult = $result[$i + 1];
     if (count($firstResult['deviceModel']) < 0 || count($secondResult['deviceModel']) < 0 ||
         $firstResult['sysOS'] != $secondResult['sysOS'] || $firstResult['browerType'] != $secondResult['browerType'] ||
-        $firstResult['deviceModel'] != $secondResult['deviceModel'] || $firstResult['renderMode'] != $secondResult['renderMode'])
+        $firstResult['deviceModel'] != $secondResult['deviceModel'] || $firstResult['renderMode'] != $secondResult['renderMode'] || $firstResult['systemVersion'] == $secondResult['systemVersion'])
     {
         $i--;
         continue;
