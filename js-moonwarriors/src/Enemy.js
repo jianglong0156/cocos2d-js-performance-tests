@@ -92,21 +92,21 @@ var Enemy = ED.FastSprite.extend({
         //this.destroy();
 
         // just explosiion
-        var a = Explosion.getOrCreateExplosion();
-        a.attr({
-            x: this.x,
-            y: this.y
-        });
-        SparkEffect.getOrCreateSparkEffect(this.x, this.y);
+        //var a = Explosion.getOrCreateExplosion();
+        //a.attr({
+        //    x: this.x,
+        //    y: this.y
+        //});
+        //SparkEffect.getOrCreateSparkEffect(this.x, this.y);
     },
     destroy:function () {
         MW.SCORE += this.scoreValue;
-        var a = Explosion.getOrCreateExplosion();
-        a.attr({
-	        x: this.x,
-	        y: this.y
-        });
-        SparkEffect.getOrCreateSparkEffect(this.x, this.y);
+        //var a = Explosion.getOrCreateExplosion();
+        //a.attr({
+	     //   x: this.x,
+	     //   y: this.y
+        //});
+        //SparkEffect.getOrCreateSparkEffect(this.x, this.y);
         this.visible = false;
         this.active = false;
         this.stopAllActions();
