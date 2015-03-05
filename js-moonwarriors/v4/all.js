@@ -171,6 +171,11 @@ var cc;
             RuntimeDebugLevel[RuntimeDebugLevel["RELEASE"] = 1] = "RELEASE";
         })(Debug.RuntimeDebugLevel || (Debug.RuntimeDebugLevel = {}));
         var RuntimeDebugLevel = Debug.RuntimeDebugLevel;
+        var enabled = true;
+        function EnableConsole(b) {
+            enabled = b;
+        }
+        Debug.EnableConsole = EnableConsole;
         /**
          * Current Runtime debug level. DEBUG by default.
          * @member cc.Debug.DEBUG_LEVEL
@@ -202,6 +207,9 @@ var cc;
          * @param rest {Array<any>} other parameters to show in console.
          */
         function debug(level, msg, rest) {
+            if (!enabled) {
+                return;
+            }
             console.log("%c%s:%c %s", __consoleDecoration[level], DebugLevel[level], __defaultDecoration, msg);
             if (rest.length) {
                 console.log(rest);
@@ -679,6 +687,29 @@ var cc;
                 }
             };
             /**
+             * Shamelessly ripped from: http://beesbuzz.biz/code/hsv_color_transforms.php
+             * Thanks for the awesome code.
+             *
+             * Convert a color value based on HSV parameters.
+             *
+             * @param c {cc.math.Color}
+             * @param H {number} angle
+             * @param S {number}
+             * @param V {number}
+             * @returns {cc.math.Color} modified color.
+             */
+            Color.HSV = function (c, H, S, V) {
+                var VSU = V * S * Math.cos(H * Math.PI / 180);
+                var VSW = V * S * Math.sin(H * Math.PI / 180);
+                var r = (.299 * V + .701 * VSU + .168 * VSW) * c.r + (.587 * V - .587 * VSU + .330 * VSW) * c.g + (.114 * V - .114 * VSU - .497 * VSW) * c.b;
+                var g = (.299 * V - .299 * VSU - .328 * VSW) * c.r + (.587 * V + .413 * VSU + .035 * VSW) * c.g + (.114 * V - .114 * VSU + .292 * VSW) * c.b;
+                var b = (.299 * V - .3 * VSU + 1.25 * VSW) * c.r + (.587 * V - .588 * VSU - 1.05 * VSW) * c.g + (.114 * V + .886 * VSU - .203 * VSW) * c.b;
+                c.r = r;
+                c.g = g;
+                c.b = b;
+                return c;
+            };
+            /**
              * Transparent black color.
              * @member cc.math.Color.TRANSPARENT_BLACK
              * @type {cc.math.Color}
@@ -816,6 +847,17 @@ var cc;
              */
             Matrix3.copy = function (source, destination) {
                 destination.set(source);
+            };
+            Matrix3.set = function (m, a, b, c, d, tx, ty) {
+                m[0] = a;
+                m[1] = b;
+                m[2] = tx;
+                m[3] = c;
+                m[4] = d;
+                m[5] = ty;
+                m[6] = 0;
+                m[7] = 0;
+                m[8] = 1;
             };
             /**
              * Given a node, calculate a resulting matrix for position, scale and rotate.
@@ -4505,6 +4547,7 @@ var cc;
 /// <reference path="../util/Debug.ts"/>
 /// <reference path="../locale/Locale.ts"/>
 /// <reference path="../action/SchedulerQueue.ts"/>
+/// <reference path="../action/ActionChainContext.ts"/>
 /// <reference path="./Scene.ts"/>
 var cc;
 (function (cc) {
@@ -4910,7 +4953,7 @@ var cc;
              */
             Node.prototype.setScale = function (x, y) {
                 this.scaleX = x;
-                this.scaleY = y;
+                this.scaleY = typeof y === "undefined" ? x : y;
                 return this;
             };
             /**
@@ -5543,6 +5586,12 @@ var cc;
                 this._inputEvents[event] = callback;
                 return this;
             };
+            /**
+             * Notify an event callback based on the event type.
+             * @method cc.node.Node#notifyEvent
+             * @param e {cc.event.InputManagerEvent}
+             * @returns {boolean} whether the event must bubble.
+             */
             Node.prototype.notifyEvent = function (e) {
                 var callback = this._inputEvents[e.type];
                 if (e.type === "touchstart") {
@@ -5571,13 +5620,52 @@ var cc;
                     }
                 }
                 if (callback) {
-                    callback(e);
+                    return callback(e);
                 }
+                return false;
             };
+            /**
+             * Get a point in screen space turned into local node space.
+             * When nodes are axis aligned, this is trivial, but for transformed nodes this method is needed.
+             * The point will be modified.
+             * See input demos.
+             * @method cc.node.Node#getScreenPointInLocalSpace
+             * @param p {cc.math.Vector}
+             */
             Node.prototype.getScreenPointInLocalSpace = function (p) {
                 var matrix = this.getInverseWorldModelViewMatrix();
                 cc.math.Matrix3.transformPoint(matrix, p);
             };
+            /**
+             * Get a point in local Node space turned into screen space.
+             * When nodes are axis aligned, this is trivial, but for transformed nodes this method is needed.
+             * The point will be modified.
+             * See input demos.
+             * @method cc.node.Node#getLocalPointInScreenSpace
+             * @param p {cc.math.Vector}
+             */
+            Node.prototype.getLocalPointInScreenSpace = function (p) {
+                cc.math.Matrix3.transformPoint(this._worldModelViewMatrix, p);
+            };
+            /**
+             * Get a point in local Node space turned into another Node's local space.
+             * When nodes are axis aligned, this is trivial, but for transformed nodes this method is needed.
+             * The point will be modified.
+             * See input demos.
+             * @method cc.node.Node#getLocalPointInNodeSpace
+             * @param p {cc.math.Vector}
+             */
+            Node.prototype.getLocalPointInNodeSpace = function (p, node) {
+                this.getLocalPointInScreenSpace(p);
+                node.getScreenPointInLocalSpace(p);
+            };
+            /**
+             * Get whether a point in screen space lies in the Node's bounds.
+             * When nodes are axis aligned, this is trivial, but for transformed nodes this method is needed.
+             * See input demos.
+             * @method cc.node.Node#isScreenPointInNode
+             * @param p {cc.math.Vector}
+             */
             Node.prototype.isScreenPointInNode = function (p) {
                 if (!this.isVisible()) {
                     return false;
@@ -5737,7 +5825,7 @@ var cc;
                 }
                 this._parent.removeChild(this, cleanup);
                 if (cleanup) {
-                    this.unscheduleAllCallbacks();
+                    this.cleanup();
                 }
                 return this;
             };
@@ -5746,7 +5834,7 @@ var cc;
              * @method cc.node.Node#removeAllChildren
              * @returns {cc.node.Node}
              */
-            Node.prototype.removeAllChildren = function () {
+            Node.prototype.removeAllChildren = function (cleanup) {
                 for (var i = 0; i < this._children.length; i++) {
                     this._children[i]._parent = null;
                 }
@@ -5876,7 +5964,7 @@ var cc;
              */
             Node.prototype.draw = function (ctx) {
                 if (this._color !== DEFAULT_COLOR) {
-                    ctx.globalAlpha = this._frameAlpha;
+                    ctx.setGlobalAlpha(this._frameAlpha);
                     ctx.setTintColor(cc.math.Color.WHITE);
                     ctx.setFillStyleColor(this._color);
                     ctx.fillRect(0, 0, this._contentSize.width, this._contentSize.height);
@@ -5894,6 +5982,9 @@ var cc;
                 }
                 this._name = name;
                 return this;
+            };
+            Node.prototype.startActionChain = function () {
+                return new cc.action.ActionChainContext(this);
             };
             /**
              * Schedule an action to run.
@@ -6133,7 +6224,6 @@ var cc;
                     this._scene.resumeTarget(this);
                 }
                 // PENDING: implement
-                //this.actionManager && this.actionManager.resumeTarget(this);
                 //cc.eventManager.resumeTarget(this);
             };
             /**
@@ -6147,7 +6237,6 @@ var cc;
                     this._scene.pauseTarget(this);
                 }
                 // PENDING: implement
-                //this.actionManager && this.actionManager.pauseTarget(this);
                 //cc.eventManager.pauseTarget(this);
             };
             /**
@@ -6330,9 +6419,9 @@ var cc;
 /**
  * License: see license.txt file.
  */
-/// <reference path="../node/Node.ts"/>
 /// <reference path="./TimeInterpolator.ts"/>
 /// <reference path="./ActionManager.ts"/>
+/// <reference path="./ActionChainContext.ts"/>
 var cc;
 (function (cc) {
     var action;
@@ -6349,15 +6438,49 @@ var cc;
         _action.TIMEUNITS = 1000;
         var SECONDS = 1000;
         var MILLISECONDS = 1;
+        /**
+         * Change time units on actions, schedulers, etc to seconds.
+         * This is the default type.
+         * @name setTimeReferenceInSeconds
+         * @memberof cc.action
+         */
         function setTimeReferenceInSeconds() {
             cc.action.TIMEUNITS = SECONDS;
         }
         _action.setTimeReferenceInSeconds = setTimeReferenceInSeconds;
+        /**
+         * Change time units on actions, schedulers, etc to milliseconds.
+         * @name setTimeReferenceInMillis
+         * @memberof cc.action
+         */
         function setTimeReferenceInMillis() {
             cc.action.TIMEUNITS = MILLISECONDS;
         }
         _action.setTimeReferenceInMillis = setTimeReferenceInMillis;
         "use strict";
+        /**
+         * Callback definition for Action Apply event.
+         * @memberOf cc.action
+         * @callback ActionCallbackApplicationCallback
+         * @param action {cc.action.Action} Executed Action.
+         * @param target: {object} target the Action applied to.
+         * @param value: {Object} Current target property value set.
+         */
+        /**
+         * Callback definition for Action Start, End, Pause and Resume events.
+         * @memberOf cc.action
+         * @callback ActionCallbackStartOrEndOrPauseOrResumeCallback
+         * @param action {cc.action.Action} Executed Action.
+         * @param target: {object} target the Action applied to.
+         */
+        /**
+         * Callback definition for Action Repeat event.
+         * @memberOf cc.action
+         * @callback ActionCallbackRepeatCallback
+         * @param action {cc.action.Action} Executed Action.
+         * @param target: {object} target the Action applied to.
+         * @param repetitionCount {number} Current repetition count.
+         */
         /**
          * Action internal states.
          * <br>
@@ -6389,7 +6512,8 @@ var cc;
          *  @class cc.action.Action
          *  @classdesc
          *
-         * Actions are scheduled objects that modify a node's internal state.
+         * Actions are scheduled objects that modify an arbitray object's internal state. It could be a node, or any other
+         * object type.
          * For example, schedule a rotation from 0 to 360 degrees, scale from to twice a node's size, or a combination of
          * both.
          * <br>
@@ -6413,17 +6537,17 @@ var cc;
          *
          * Predefined actions exist for the following node's properties:
          *
-         *  <li>AlphaAction. Modifies a node's transparency values.
-         *  <li>MoveAction. Modifies a node's position by traversing a straight line.
-         *  <li>PathAction. Modifies a node's position by traversing a complex path.
-         *  <li>RotateAction. Modifies a node's rotation angle.
-         *  <li>ScaleAction. Modifies a node's scale.
-         *  <li>TintAction. Modifies a node's color. This action will only have a visible result when the node is rendered
+         *  <li>AlphaAction. Modifies transparency values.
+         *  <li>MoveAction. Modifies position by traversing a straight line.
+         *  <li>PathAction. Modifies position by traversing a complex path.
+         *  <li>RotateAction. Modifies rotation angle.
+         *  <li>ScaleAction. Modifies scale.
+         *  <li>TintAction. Modifies s color. This action will only have a visible result when the node is rendered
          *      using WebGL.
          *  <li>SequenceAction. Allows for action sequencing and parallelization.
-         *  <li>PropertyAction. Allows for modification of a node's arbitrary property.
+         *  <li>PropertyAction. Allows for modification of an object's arbitrary property. Either deeply nested or not.
          *
-         * There are other type of actions that affect or create a mix of different node properties modification lile:
+         * There are other type of actions that affect or create a mix of different node properties modification like:
          *
          *  <li>BlinkAction
          *  <li>JumpAction
@@ -6439,8 +6563,6 @@ var cc;
          *  <li>Reduce overly class-extension hierarchy from version 2 and 3
          *  <li>Full action lifecycle: START, END, PAUSE, RESUME, REPEAT.
          *
-         *
-         *
          */
         var Action = (function () {
             /**
@@ -6448,8 +6570,9 @@ var cc;
              * This type of objects must augmented.
              * @constructor
              * @method cc.action.Action#constructor
+             * @param initilizer {cc.action.ActionInitializer=} a JSON object describing a base Action info.
              */
-            function Action() {
+            function Action(initializer) {
                 /**
                  * Delay to start applying the Action.
                  * @member cc.action.Action#_startTime
@@ -6478,13 +6601,6 @@ var cc;
                  * @private
                  */
                 this._repeatTimes = 1;
-                /**
-                 * Current number or Action application repetition.
-                 * @member cc.action.Action#_repeatTimesCount
-                 * @type {number}
-                 * @private
-                 */
-                this._repeatTimesCount = 0;
                 /**
                  * Current repetition count.
                  * @member cc.action.Action#_currentRepeatCount
@@ -6614,7 +6730,7 @@ var cc;
                  * @type {cc.action.ActionManager}
                  * @private
                  */
-                this._owner = null;
+                //_owner:ActionManager = null;
                 /**
                  * Reference for a chained action. Do not use or modify.
                  * @member cc.action.Action#_chainAction
@@ -6644,8 +6760,67 @@ var cc;
                  * @private
                  */
                 this._parentSequence = null;
+                /**
+                 * Is the action reversed ?
+                 * This happens by a call to reverse() or setReversed()
+                 * @member cc.action.Action#_reversed
+                 * @type {boolean}
+                 * @private
+                 */
                 this._reversed = false;
+                /**
+                 * When a call to node.startActionChain() is made, an ActionChainContext object is created. It is a fachade
+                 * for chainable api. apart from that, does nothing to the Action.
+                 * @member cc.action.Action#_chainContext
+                 * @type {cc.action.ActionChainContext}
+                 * @private
+                 */
+                this._chainContext = null;
+                if (initializer) {
+                    this.__createFromInitializer(initializer);
+                }
             }
+            /**
+             * Initialize the action with an initializer object.
+             * @method cc.action.Action#__createFromInitializer
+             * @param initializer {cc.action.ActionInitializer}
+             * @private
+             */
+            Action.prototype.__createFromInitializer = function (initializer) {
+                if (typeof initializer !== "undefined") {
+                    if (typeof initializer.relative !== 'undefined') {
+                        this.setRelative(initializer.relative);
+                    }
+                    if (typeof initializer.duration !== 'undefined') {
+                        this.setDuration(initializer.duration);
+                    }
+                    if (typeof initializer.delayBefore !== 'undefined') {
+                        this.setDelay(initializer.delayBefore);
+                    }
+                    if (typeof initializer.delayAfter !== 'undefined') {
+                        this.setDelayAfterApplication(initializer.delayAfter);
+                    }
+                    if (typeof initializer.interpolator !== "undefined") {
+                        this.setInterpolator(cc.action.ParseInterpolator(initializer.interpolator));
+                    }
+                    if (typeof initializer.from !== "undefined") {
+                        if (this.from) {
+                            this.from(initializer.from);
+                        }
+                    }
+                    if (typeof initializer.to !== "undefined") {
+                        if (this.to) {
+                            this.to(initializer.to);
+                        }
+                    }
+                    if (typeof initializer.repeatTimes !== "undefined") {
+                        this.setRepeatTimes(initializer.repeatTimes);
+                    }
+                    if (typeof initializer.reversed !== "undefined") {
+                        this._reversed = initializer.reversed;
+                    }
+                }
+            };
             /**
              * Set an arbitrary tag for an Action.
              * @method cc.action.Action#setTag
@@ -6657,36 +6832,16 @@ var cc;
                 return this;
             };
             /**
-             * Update an Action's target node.
+             * Update an Action's target object.
              * This function must be overriden by Action subclass Objects.
              * @method cc.action.Action#update
              * @param normalizedTime {number} value between 0 and 1.
-             * @param target {cc.node.Node} node instance the action will be applied for.
+             * @param target {any} object instance the action will be applied for.
              *
              * @returns {Object} a value descriptive for the action type. For example, ScaleAction will return an object with
-             * the scale applied, and MoveAction a <code>cc.math.Vector</code> with node's set position.
+             * the scale applied, and MoveAction a <code>cc.math.Vector</code> with object's set position.
              */
             Action.prototype.update = function (normalizedTime, target) {
-            };
-            /**
-             * Set an Action's owner.
-             * Don't call this method directly.
-             * @method cc.action.Action#__setOwner
-             * @param owner {cc.action.ActionManager}
-             * @returns {cc.action.Action}
-             * @private
-             */
-            Action.prototype.__setOwner = function (owner) {
-                this._owner = owner;
-                return this;
-            };
-            /**
-             * Return an Action's owner.
-             * @method cc.action.Action#__getOwner
-             * @returns {cc.action.ActionManager}
-             */
-            Action.prototype.getOwner = function () {
-                return this._owner;
             };
             /**
              * Set an Action's duration. Duration is in milliseconds.
@@ -6695,13 +6850,12 @@ var cc;
              */
             Action.prototype.setDuration = function (duration) {
                 this._duration = duration * _action.TIMEUNITS;
-                //this.setDelay(this._delayBeforeApplication);
                 this.__updateDuration();
                 return this;
             };
             /**
              * Set an action's pre application delay.
-             * An action will take this milliseconds to start applying values in a node.
+             * An action will take this milliseconds to start applying values in a target.
              * @method cc.action.Action#setDelay
              * @param d {number} milliseconds.
              * @returns {cc.action.Action}
@@ -6733,7 +6887,7 @@ var cc;
              */
             Action.prototype.restart = function () {
                 this._firstExecution = true;
-                this._repeatTimesCount = 0;
+                this._currentRepeatCount = 0;
                 this._status = 3 /* CREATED */;
                 this._currentTime = 0;
                 return this;
@@ -6831,7 +6985,7 @@ var cc;
             };
             /**
              * Register a callback notification function fired whenever the action applies.
-             * The action applies once per frame, and allows for getting values that have been set on the node.
+             * The action applies once per frame, and allows for getting values that have been set on the target.
              * @method cc.action.Action#onApply
              * @param callback { cc.action.ActionCallbackApplicationCallback }
              * @return Action
@@ -6864,7 +7018,7 @@ var cc;
             /**
              * Pause this action.
              * @method cc.action.Action#pause
-             * @param target {Node=}
+             * @param target {object=}
              * @returns Action
              */
             Action.prototype.pause = function (target) {
@@ -6995,44 +7149,44 @@ var cc;
             };
             /**
              * This method must no be called directly.
-             * The director loop will call this method in order to apply node actions.
+             * The director loop will call this method in order to apply target actions.
              * @method cc.action.Action#step
              * @param delta {number} elapsed time since last application.
-             * @param node {cc.node.Node}  node the action is being applied to.
+             * @param target {object}  target object the action is being applied to.
              */
-            Action.prototype.step = function (delta, node) {
+            Action.prototype.step = function (delta, target) {
                 delta *= cc.action.TIMEUNITS;
                 this._currentTime += delta * this._speed;
-                this.__stepImpl(delta, this._currentTime, node);
+                this.__stepImpl(delta, this._currentTime, target);
             };
             /**
              * Actual step implementation.
              * @method cc.action.Action#__stepImpl
              * @param delta {number} elapsed time since last application.
              * @param time {number} Action accumulated time.
-             * @param node {cc.node.Node} target to apply action to.
+             * @param target {object} target to apply action to.
              * @private
              */
-            Action.prototype.__stepImpl = function (delta, time, node) {
+            Action.prototype.__stepImpl = function (delta, time, target) {
                 // if an action is not ended, it has the chance of updating value
                 if (this._status !== 4 /* ENDED */) {
                     // actions can be paused w/o even been started.
                     if (this._status === 5 /* RESUMED */) {
                         if (this._onResume) {
-                            this._onResume(this, node);
+                            this._onResume(this, target);
                         }
                     }
                     // if the action is not ended, but can be executed due to time
                     if (this.__isActionApplicable(time)) {
-                        this.__actionApply(time, node);
+                        this.__actionApply(time, target);
                     }
                     else {
                         // if the action is expired, ie, current time is beyong the start and duration
                         if (time >= this._startTime + this.getDuration()) {
                             // apply for final state anyway
-                            this.__actionApply(time, node);
+                            this.__actionApply(time, target);
                             // set the action as ENDED
-                            this.stop(node);
+                            this.stop(target);
                         }
                     }
                 }
@@ -7042,19 +7196,19 @@ var cc;
              * Do not call directly.
              * @method cc.action.Action#__actionApply
              * @param time {number} current action's application time.
-             * @param node {cc.node.Node} target node.
+             * @param target {object} target node.
              * @private
              */
-            Action.prototype.__actionApply = function (time, node) {
+            Action.prototype.__actionApply = function (time, target) {
                 // manage first execution. it gives the chance to the Action of initializing with the target node
                 if (this._firstExecution) {
                     // callback for onStart. only once. from now on, the action is not first_execution
                     if (this._onStart) {
-                        this._onStart(this, node);
+                        this._onStart(this, target);
                     }
                     this._firstExecution = false;
                     // initialize with the target before updating its values.
-                    this.initWithTarget(node);
+                    this.initWithTarget(target);
                 }
                 // current status RUNNING
                 this._status = 2 /* RUNNING */;
@@ -7062,11 +7216,21 @@ var cc;
                 // action length, start time, etc. it also applies the easing (if any).
                 var ntime = this.__normalizeTime(time);
                 // update target
-                var v = this.update(ntime, node);
+                var v = this.update(ntime, target);
                 // application callback. called each time the node has changed properties.
                 if (this._onApply) {
-                    this._onApply(this, node, v);
+                    this._onApply(this, target, v);
                 }
+                this.__checkRepetition(time, target);
+            };
+            /**
+             * Do code specific for checking action repetition and callback invocation when it makes sense.
+             * @method cc.action.Action#__checkRepetition
+             * @param time {number} current action application time .
+             * @param target {object} target object the action is being applied to.
+             * @private
+             */
+            Action.prototype.__checkRepetition = function (time, target) {
                 // if this is a repeating action
                 if (this._repeatTimes !== 1) {
                     // calculate current repetition value
@@ -7079,7 +7243,7 @@ var cc;
                         this._currentRepeatCount = repeatIndex;
                         // callback about repetition
                         if (this._onRepeat) {
-                            this._onRepeat(this, node, repeatIndex);
+                            this._onRepeat(this, target, repeatIndex);
                         }
                     }
                 }
@@ -7088,27 +7252,27 @@ var cc;
              * Pass in the target node this action will act on.
              * This method must be overriden by each action type.
              * @method cc.action.Action#initWithTarget
-             * @param node {cc.node.Node}
+             * @param target {object}
              */
-            Action.prototype.initWithTarget = function (node) {
+            Action.prototype.initWithTarget = function (target) {
             };
             /**
              * Solve Action first application values.
              * Must be overriden.
              * @method cc.action.Action#solveInitialValues
-             * @param node {cc.node.Node}
+             * @param target {object}
              */
-            Action.prototype.solveInitialValues = function (node) {
+            Action.prototype.solveInitialValues = function (target) {
             };
             /**
              * End this action immediately. Will call onEnd callback if set.
              * @method cc.action.Action#stop
-             * @param node {cc.node.Node=}
+             * @param target {object=}
              */
-            Action.prototype.stop = function (node) {
+            Action.prototype.stop = function (target) {
                 this._status = 4 /* ENDED */;
                 if (this._onEnd) {
-                    this._onEnd(this, node);
+                    this._onEnd(this, target);
                 }
             };
             /**
@@ -7162,112 +7326,6 @@ var cc;
                     this._interpolator = interpolator;
                 }
                 return this;
-            };
-            /**
-             * This method is called by ActionManager when chaining actions by calling <code>startChainingActionsForNode</code>.
-             * Add a Move action to the Node.
-             * @method cc.action.Action#actionMove
-             * @returns {cc.action.Action}
-             */
-            Action.prototype.actionMove = function () {
-                if (this._parentSequence) {
-                    return this._parentSequence.actionMove();
-                }
-                return this._owner.actionMove();
-            };
-            /**
-             * This method is called by ActionManager when chaining actions by calling <code>startChainingActionsForNode</code>.
-             * Add a Rotate action to the Node.
-             * @method cc.action.Action#actionRotate
-             * @returns {cc.action.Action}
-             */
-            Action.prototype.actionRotate = function () {
-                if (this._parentSequence) {
-                    return this._parentSequence.actionRotate();
-                }
-                return this._owner.actionRotate();
-            };
-            /**
-             * This method is called by ActionManager when chaining actions by calling <code>startChainingActionsForNode</code>.
-             * Add a Scale action to the Node.
-             * @method cc.action.Action#actionScale
-             * @returns {cc.action.Action}
-             */
-            Action.prototype.actionScale = function () {
-                if (this._parentSequence) {
-                    return this._parentSequence.actionScale();
-                }
-                return this._owner.actionScale();
-            };
-            /**
-             * This method is called by ActionManager when chaining actions by calling <code>startChainingActionsForNode</code>.
-             * Add a Alpha (transparency) action to the Node.
-             * @method cc.action.Action#actionAlpha
-             * @returns {cc.action.Action}
-             */
-            Action.prototype.actionAlpha = function () {
-                if (this._parentSequence) {
-                    return this._parentSequence.actionAlpha();
-                }
-                return this._owner.actionAlpha();
-            };
-            /**
-             * This method is called by ActionManager when chaining actions by calling <code>startChainingActionsForNode</code>.
-             * Add a Tint action to the Node.
-             * @method cc.action.Action#actionTint
-             * @returns {cc.action.Action}
-             */
-            Action.prototype.actionTint = function () {
-                if (this._parentSequence) {
-                    return this._parentSequence.actionTint();
-                }
-                return this._owner.actionTint();
-            };
-            /**
-             * This method is called by ActionManager when chaining actions by calling <code>startChainingActionsForNode</code>.
-             * Add a Property action to the Node.
-             * @method cc.action.Action#actionProperty
-             * @returns {cc.action.Action}
-             */
-            Action.prototype.actionProperty = function () {
-                if (this._parentSequence) {
-                    return this._parentSequence.actionProperty();
-                }
-                return this._owner.actionProperty();
-            };
-            /**
-             * This method is called by ActionManager when chaining actions by calling <code>startChainingActionsForNode</code>.
-             * Add a Sequence action to the Node.
-             * @method cc.action.Action#actionSequence
-             * @returns {cc.action.SequenceAction}
-             */
-            Action.prototype.actionSequence = function () {
-                if (this._parentSequence) {
-                    return this._parentSequence.actionSequence();
-                }
-                return this._owner.actionSequence();
-            };
-            /**
-             * End a sequence action.
-             * Underflow on calling this function (ie, calling endSequence when there's no more Sequence actions) has no
-             * effect.
-             * @method cc.action.Action#endSequence
-             * @returns {cc.action.Action}
-             */
-            Action.prototype.endSequence = function () {
-                if (!this._parentSequence) {
-                    return this;
-                }
-                return this._parentSequence.endSequence();
-            };
-            /**
-             * This method is called by ActionManager when chaining actions by calling <code>startChainingActionsForNode</code>.
-             * Calling this method will chain two actions.
-             * @method cc.action.Action#then
-             * @returns {cc.action.ActionInfo}
-             */
-            Action.prototype.then = function () {
-                return this._owner.then();
             };
             /**
              * This method will make actions to be applied relatively instead of absolutely.
@@ -7355,7 +7413,7 @@ var cc;
              * @private
              */
             Action.prototype.__genericCloneProperties = function (copy) {
-                copy.setInterpolator(this._interpolator).setReversedTime(this._reversedTime).__setOwner(this.getOwner()).setSpeed(this.getSpeed()).setRepeatTimes(this._repeatTimes).setRelative(this._relativeAction);
+                copy.setInterpolator(this._interpolator).setReversedTime(this._reversedTime).setSpeed(this.getSpeed()).setRepeatTimes(this._repeatTimes).setRelative(this._relativeAction);
                 copy._startTime = this._startTime;
                 copy._duration = this._duration;
                 copy._delayAfterApplication = this._delayAfterApplication;
@@ -7407,6 +7465,13 @@ var cc;
                 this._reversedTime = b;
                 return this;
             };
+            /**
+             * This method is called from a SequenceAction object. It clears current action status info so that it can
+             * be restarted.
+             * @method cc.action.Action#__recursivelySetCreatedStatus
+             * @param target {any}
+             * @private
+             */
             Action.prototype.__recursivelySetCreatedStatus = function (target) {
                 if (this._status !== 4 /* ENDED */) {
                     this.update(this._reversed ? 0 : 1, target);
@@ -7414,6 +7479,38 @@ var cc;
                 this._currentTime = 0;
                 this._status = 3 /* CREATED */;
                 this._firstExecution = true;
+            };
+            /**
+             * Apply this action in a pingpong way.
+             * @method cc.action.Action#pingpong
+             */
+            Action.prototype.pingpong = function () {
+                this.setInterpolator(cc.action.Interpolator.Linear(this._reversed, true));
+            };
+            /**
+             * Build an initializer object out of the Action current state and info.
+             * Every Action type must override and super.call this method.
+             * @method cc.action.Action#getInitializer
+             * @returns {cc.action.ActionInitializer}
+             */
+            Action.prototype.getInitializer = function () {
+                var obj = {};
+                if (this._delayBeforeApplication) {
+                    obj.delayBefore = this._delayBeforeApplication / cc.action.TIMEUNITS;
+                }
+                if (this._delayAfterApplication) {
+                    obj.delayAfter = this._delayAfterApplication / cc.action.TIMEUNITS;
+                }
+                obj.duration = this._duration / cc.action.TIMEUNITS;
+                obj.relative = this._relativeAction;
+                if (this._repeatTimes !== 1) {
+                    obj.repeatTimes = this._repeatTimes;
+                }
+                if (this._interpolator) {
+                    obj.interpolator = this._interpolator.getInitializer();
+                }
+                obj.reversed = this._reversed;
+                return obj;
             };
             /**
              * Default tag value.
@@ -7436,6 +7533,29 @@ var cc;
     var action;
     (function (action) {
         "use strict";
+        /**
+         *
+         * This function creates a new TimeIntepolator object from a JSON object.
+         * It can be the result of serializing an interpolator.
+         *
+         * @name ParseInterpolator
+         * @memberOf cc.action
+         * @param ii {cc.action.InterpolatorInitializer}
+         * @returns {cc.action.TimeInterpolator}
+         * @constructor
+         */
+        function ParseInterpolator(ii) {
+            if (ii.type === "EaseIn" || ii.type === "EaseOut" || ii.type === "EaseInOut") {
+                return cc.action.Interpolator[ii.type](ii.exponent, ii.inverse, ii.pingpong);
+            }
+            else if (ii.type === "ElasticIn" || ii.type === "ElasticOut" || ii.type === "ElasticInOut") {
+                return cc.action.Interpolator[ii.type](ii.period, ii.inverse, ii.pingpong);
+            }
+            else {
+                return cc.action.Interpolator[ii.type](ii.inverse, ii.pingpong);
+            }
+        }
+        action.ParseInterpolator = ParseInterpolator;
         function calcTime(time, inverse, pingpong) {
             if (pingpong) {
                 if (time < 0.5) {
@@ -7503,6 +7623,13 @@ var cc;
                 fn.reverse = function () {
                     return Interpolator.Linear(!inverse, pingpong);
                 };
+                fn.getInitializer = function () {
+                    return {
+                        type: "Linear",
+                        inverse: inverse,
+                        pingpong: pingpong
+                    };
+                };
                 return fn;
             };
             /**
@@ -7520,6 +7647,14 @@ var cc;
                 fn.reverse = function () {
                     return Interpolator.EaseIn(exponent, !inverse, pingpong);
                 };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseIn",
+                        inverse: inverse,
+                        pingpong: pingpong,
+                        exponent: exponent
+                    };
+                };
                 return fn;
             };
             /**
@@ -7536,6 +7671,14 @@ var cc;
                 };
                 fn.reverse = function () {
                     return Interpolator.EaseOut(exponent, !inverse, pingpong);
+                };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseOut",
+                        inverse: inverse,
+                        pingpong: pingpong,
+                        exponent: exponent
+                    };
                 };
                 return fn;
             };
@@ -7558,6 +7701,14 @@ var cc;
                 fn.reverse = function () {
                     return Interpolator.EaseInOut(exponent, !inverse, pingpong);
                 };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseInOut",
+                        inverse: inverse,
+                        pingpong: pingpong,
+                        exponent: exponent
+                    };
+                };
                 return fn;
             };
             /**
@@ -7575,6 +7726,13 @@ var cc;
                 fn.reverse = function () {
                     return Interpolator.EaseExponentialIn(!inverse, pingpong);
                 };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseExponentialIn",
+                        inverse: inverse,
+                        pingpong: pingpong
+                    };
+                };
                 return fn;
             };
             /**
@@ -7591,6 +7749,13 @@ var cc;
                 };
                 fn.reverse = function () {
                     return Interpolator.EaseExponentialOut(!inverse, pingpong);
+                };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseExponentialOut",
+                        inverse: inverse,
+                        pingpong: pingpong
+                    };
                 };
                 return fn;
             };
@@ -7615,6 +7780,13 @@ var cc;
                 fn.reverse = function () {
                     return Interpolator.EaseExponentialInOut(!inverse, pingpong);
                 };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseExponentialInOut",
+                        inverse: inverse,
+                        pingpong: pingpong
+                    };
+                };
                 return fn;
             };
             /**
@@ -7631,6 +7803,13 @@ var cc;
                 };
                 fn.reverse = function () {
                     return Interpolator.EaseSineIn(!inverse, pingpong);
+                };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseSineIn",
+                        inverse: inverse,
+                        pingpong: pingpong
+                    };
                 };
                 return fn;
             };
@@ -7649,6 +7828,13 @@ var cc;
                 fn.reverse = function () {
                     return Interpolator.EaseSineOut(!inverse, pingpong);
                 };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseSineOut",
+                        inverse: inverse,
+                        pingpong: pingpong
+                    };
+                };
                 return fn;
             };
             /**
@@ -7665,6 +7851,13 @@ var cc;
                 };
                 fn.reverse = function () {
                     return Interpolator.EaseSineInOut(!inverse, pingpong);
+                };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseSineInOut",
+                        inverse: inverse,
+                        pingpong: pingpong
+                    };
                 };
                 return fn;
             };
@@ -7692,6 +7885,14 @@ var cc;
                 fn.reverse = function () {
                     return Interpolator.EaseElasticIn(period, !inverse, pingpong);
                 };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseElasticIn",
+                        inverse: inverse,
+                        pingpong: pingpong,
+                        period: period
+                    };
+                };
                 return fn;
             };
             /**
@@ -7716,6 +7917,14 @@ var cc;
                 };
                 fn.reverse = function () {
                     return Interpolator.EaseElasticOut(period, !inverse, pingpong);
+                };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseElasticOut",
+                        inverse: inverse,
+                        pingpong: pingpong,
+                        period: period
+                    };
                 };
                 return fn;
             };
@@ -7747,6 +7956,14 @@ var cc;
                 fn.reverse = function () {
                     return Interpolator.EaseElasticInOut(period, !inverse, pingpong);
                 };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseElasticInOut",
+                        inverse: inverse,
+                        pingpong: pingpong,
+                        period: period
+                    };
+                };
                 return fn;
             };
             /**
@@ -7764,6 +7981,13 @@ var cc;
                 fn.reverse = function () {
                     return Interpolator.EaseBounceIn(!inverse, pingpong);
                 };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseBounceIn",
+                        inverse: inverse,
+                        pingpong: pingpong
+                    };
+                };
                 return fn;
             };
             /**
@@ -7779,6 +8003,13 @@ var cc;
                 };
                 fn.reverse = function () {
                     return Interpolator.EaseBounceOut(!inverse, pingpong);
+                };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseBounceOut",
+                        inverse: inverse,
+                        pingpong: pingpong
+                    };
                 };
                 return fn;
             };
@@ -7803,6 +8034,13 @@ var cc;
                 fn.reverse = function () {
                     return Interpolator.EaseBounceInOut(!inverse, pingpong);
                 };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseBounceInOut",
+                        inverse: inverse,
+                        pingpong: pingpong
+                    };
+                };
                 return fn;
             };
             /**
@@ -7820,6 +8058,13 @@ var cc;
                 };
                 fn.reverse = function () {
                     return Interpolator.EaseBackIn(!inverse, pingpong);
+                };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseBackIn",
+                        inverse: inverse,
+                        pingpong: pingpong
+                    };
                 };
                 return fn;
             };
@@ -7839,6 +8084,13 @@ var cc;
                 };
                 fn.reverse = function () {
                     return Interpolator.EaseBackOut(!inverse, pingpong);
+                };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseBackOut",
+                        inverse: inverse,
+                        pingpong: pingpong
+                    };
                 };
                 return fn;
             };
@@ -7864,6 +8116,13 @@ var cc;
                 };
                 fn.reverse = function () {
                     return Interpolator.EaseBackInOut(!inverse, pingpong);
+                };
+                fn.getInitializer = function () {
+                    return {
+                        type: "EaseBackInOut",
+                        inverse: inverse,
+                        pingpong: pingpong
+                    };
                 };
                 return fn;
             };
@@ -7929,14 +8188,23 @@ var cc;
                  * @private
                  */
                 this._endAlpha = 0;
-                if (typeof data !== "undefined") {
-                    this._startAlpha = data.start;
-                    this._endAlpha = data.end;
-                    if (typeof data.relative !== "undefined") {
-                        this.setRelative(data.relative);
-                    }
+                if (data) {
+                    this.__createFromInitializer(data);
                 }
             }
+            /**
+             * Initialize the action with an initializer object.
+             * @method cc.action.AlphaAction#__createFromInitializer
+             * @param data {cc.action.AlphaActionInitializer}
+             * @private
+             */
+            AlphaAction.prototype.__createFromInitializer = function (data) {
+                _super.prototype.__createFromInitializer.call(this, data);
+                if (typeof data !== "undefined") {
+                    this._startAlpha = data.to;
+                    this._endAlpha = data.from;
+                }
+            };
             /**
              * Update target Node's transparency.
              * {@link cc.action.Action#update}
@@ -8011,6 +8279,20 @@ var cc;
                 copy._originalAlpha = this._originalAlpha;
                 this.__genericCloneProperties(copy);
                 return copy;
+            };
+            /**
+             * Serialize the action current definition.
+             * @method cc.action.AlphaAction#getInitializer
+             * @returns {cc.action.AlphaActionInitializer}
+             */
+            AlphaAction.prototype.getInitializer = function () {
+                var init = _super.prototype.getInitializer.call(this);
+                if (this._fromValuesSet) {
+                    init.from = this._startAlpha;
+                }
+                init.to = this._endAlpha;
+                init.type = "AlphaAction";
+                return init;
             };
             return AlphaAction;
         })(Action);
@@ -8095,16 +8377,19 @@ var cc;
                  * @private
                  */
                 this._y1 = 0;
-                if (typeof data !== "undefined") {
-                    this._x0 = data.x0;
-                    this._y0 = data.y0;
-                    this._x1 = data.x1;
-                    this._y1 = data.y1;
-                    if (typeof data.relative !== "undefined") {
-                        this.setRelative(data.relative);
-                    }
+                if (data) {
+                    this.__createFromInitializer(data);
                 }
             }
+            /**
+             * Initialize the action with an initializer object.
+             * @method cc.action.MoveAction#__createFromInitializer
+             * @param initializer {cc.action.MoveActionInitializer}
+             * @private
+             */
+            MoveAction.prototype.__createFromInitializer = function (initializer) {
+                _super.prototype.__createFromInitializer.call(this, initializer);
+            };
             /**
              * Update target Node's position.
              * {@link cc.action.Action#update}
@@ -8188,6 +8473,20 @@ var cc;
                 this.__genericCloneProperties(copy);
                 return copy;
             };
+            /**
+             * Serialize the action current definition.
+             * @method cc.action.MoveAction#getInitializer
+             * @returns {cc.action.MoveActionInitializer}
+             */
+            MoveAction.prototype.getInitializer = function () {
+                var init = _super.prototype.getInitializer.call(this);
+                if (this._fromValuesSet) {
+                    init.from = { x: this._x0, y: this._y0 };
+                }
+                init.to = { x: this._x1, y: this._y1 };
+                init.type = "MoveAction";
+                return init;
+            };
             return MoveAction;
         })(Action);
         action.MoveAction = MoveAction;
@@ -8212,9 +8511,38 @@ var cc;
         "use strict";
         var Action = cc.action.Action;
         /**
+         * @class cc.action.PropertyInfo
+         * @classdesc
+         *
          * Internal helper Object to store a property information.
+         * It stores:
+         * <li>a property name, for example 'x' or 'p0.x'
+         * <li>the property path. For example ['x'] or ['p0','x']
+         * <li>original property value for a target object
+         *
+         * It is responsible for setting and getting the deep property path values too.
+         *
+         * Referenced properties MUST be numeric.
          */
         var PropertyInfo = (function () {
+            /**
+             * Property name.
+             * @member cc.action.PropertyInfo#_property
+             * @type {string}
+             * @private
+             */
+            /**
+             * Property start value.
+             * @member cc.action.PropertyInfo#_start
+             * @type {number}
+             * @private
+             */
+            /**
+             * Property end value.
+             * @member cc.action.PropertyInfo#_end
+             * @type {number}
+             * @private
+             */
             /**
              *
              * @param _property {string} property name.
@@ -8226,33 +8554,92 @@ var cc;
                 this._start = _start;
                 this._end = _end;
                 /**
-                 * Original property value.
-                 * @type {number}
-                 * @private
-                 */
-                this._original = 0;
-                /**
                  * Property Units. For example, when the property is not a numeric value but something like '250px'.
+                 * @member cc.action.PropertyInfo#_units
                  * @type {string}
                  * @private
                  */
                 this._units = "";
+                /**
+                 * If the property is a deep property, like 'p0.x' or 'a.b.c.d.value' this property will indicate it.
+                 * @member cc.action.PropertyInfo#_nested
+                 * @type {boolean}
+                 * @private
+                 */
+                this._nested = false;
+                this._nested = _property.indexOf('.') !== -1;
+                this._propertyPath = _property.split('.');
             }
+            /**
+             * Set the property value in a target object
+             * @method cc.action.PropertyInfo#setTargetValue
+             * @param target {any}
+             * @param v {number}
+             */
+            PropertyInfo.prototype.setTargetValue = function (target, v) {
+                var cursor = target;
+                for (var i = 0; i < this._propertyPath.length - 1; i++) {
+                    if (typeof cursor[this._propertyPath[i]] !== "undefined") {
+                        cursor = cursor[this._propertyPath[i]];
+                    }
+                    else {
+                        // error, no deep path found on object
+                        return;
+                    }
+                }
+                cursor[this._propertyPath[i]] = v;
+            };
+            /**
+             * Get the property value from a target object
+             * @method cc.action.PropertyInfo#getTargetValue
+             * @param target {any}
+             * @returns {number}
+             */
+            PropertyInfo.prototype.getTargetValue = function (target) {
+                var cursor = target;
+                for (var i = 0; i < this._propertyPath.length; i++) {
+                    if (typeof cursor[this._propertyPath[i]] !== "undefined") {
+                        cursor = cursor[this._propertyPath[i]];
+                    }
+                    else {
+                        // error, no deep path found on object
+                        return null;
+                    }
+                }
+                return cursor;
+            };
+            /**
+             * Set PropertyInfo original target value.
+             * @param n {number}
+             * @returns {cc.action.PropertyInfo}
+             */
             PropertyInfo.prototype.setOriginal = function (n) {
                 this._original = n;
                 return this;
             };
+            /**
+             * Get property original value in the original target object.
+             * @method cc.action.PropertyInfo#getOriginal
+             * @returns {number}
+             */
             PropertyInfo.prototype.getOriginal = function () {
                 return this._original;
             };
+            /**
+             * Clone the PropertyInfo object.
+             * @method cc.action.PropertyInfo#clone
+             * @returns {cc.action.PropertyInfo}
+             */
             PropertyInfo.prototype.clone = function () {
                 return new PropertyInfo(this._property, this._start, this._end);
             };
-            PropertyInfo.prototype.getValue = function (v) {
-                if (this._units) {
-                    return "" + v + this._units;
-                }
-                return v;
+            /**
+             * Get the property path.
+             * @method cc.action.PropertyInfo#getPath
+             * @returns {string[]}
+             */
+            PropertyInfo.prototype.getPath = function () {
+                return this._propertyPath;
             };
             return PropertyInfo;
         })();
@@ -8279,20 +8666,29 @@ var cc;
              * PropertyAction constructor.
              * @method cc.action.PropertyAction#constructor
              */
-            function PropertyAction() {
+            function PropertyAction(data) {
                 _super.call(this);
                 this._propertiesInfo = [];
+                if (data) {
+                    this.__createFromInitializer(data);
+                }
             }
+            /**
+             * Initialize the action with an initializer object.
+             * @method cc.action.PropertyAction#__createFromInitializer
+             * @param data {cc.action.PropertyActionInitializer}
+             * @private
+             */
+            PropertyAction.prototype.__createFromInitializer = function (initializer) {
+                _super.prototype.__createFromInitializer.call(this, initializer);
+            };
             /**
              * {@link cc.action.Action#initWithTarget}
              * @method cc.action.PropertyAction#initWithTarget
              * @override
              */
             PropertyAction.prototype.initWithTarget = function (node) {
-                for (var i = 0; i < this._propertiesInfo.length; i++) {
-                    var pi = this._propertiesInfo[i];
-                    pi.setOriginal(node[pi._property]);
-                }
+                this.solveInitialValues(node);
             };
             /**
              * Update target Node's properties.
@@ -8309,7 +8705,8 @@ var cc;
                     if (this.isRelative()) {
                         v += pr.getOriginal();
                     }
-                    node[pr._property] = pr.getValue(v);
+                    pr.setTargetValue(node, v);
+                    //node[pr._property] = pr.getValue(v);
                     // register applied values only if there´s someone interested.
                     if (this._onApply) {
                         ret[pr._property] = v;
@@ -8324,17 +8721,15 @@ var cc;
              * @override
              */
             PropertyAction.prototype.solveInitialValues = function (node) {
-                if (!this._fromValuesSet) {
-                    this._fromValuesSet = true;
-                    for (var i = 0; i < this._propertiesInfo.length; i++) {
-                        var pr = this._propertiesInfo[i];
-                        if (typeof pr._start === "undefined") {
-                            pr._start = node[pr._property];
-                        }
-                        if (typeof pr._end === "undefined") {
-                            pr._end = node[pr._property];
-                        }
+                for (var i = 0; i < this._propertiesInfo.length; i++) {
+                    var pr = this._propertiesInfo[i];
+                    if (typeof pr._start === "undefined") {
+                        pr._start = pr.getTargetValue(node);
                     }
+                    if (typeof pr._end === "undefined") {
+                        pr._end = pr.getTargetValue(node);
+                    }
+                    pr._original = pr.getTargetValue(node);
                 }
             };
             /**
@@ -8343,10 +8738,13 @@ var cc;
              * @override
              */
             PropertyAction.prototype.from = function (props) {
-                for (var pr in props) {
-                    if (props.hasOwnProperty(pr)) {
-                        var propertyInfo = new PropertyInfo(pr, props[pr]);
-                        this._propertiesInfo.push(propertyInfo);
+                this._from = props;
+                if (props) {
+                    for (var pr in props) {
+                        if (props.hasOwnProperty(pr)) {
+                            var propertyInfo = new PropertyInfo(pr, props[pr]);
+                            this._propertiesInfo.push(propertyInfo);
+                        }
                     }
                 }
                 return this;
@@ -8357,6 +8755,7 @@ var cc;
              * @override
              */
             PropertyAction.prototype.to = function (props) {
+                this._to = props;
                 var i;
                 for (var pr in props) {
                     if (props.hasOwnProperty(pr)) {
@@ -8370,7 +8769,7 @@ var cc;
                             }
                         }
                         if (!property) {
-                            property = new PropertyInfo(pr, 0, 0);
+                            property = new PropertyInfo(pr);
                             this._propertiesInfo.push(property);
                         }
                         property._end = props[pr];
@@ -8400,6 +8799,20 @@ var cc;
                 var copy = new PropertyAction().to(this.__cloneProperties());
                 this.__genericCloneProperties(copy);
                 return copy;
+            };
+            /**
+             * Serialize the action current definition.
+             * @method cc.action.PropertyAction#getInitializer
+             * @returns {cc.action.PropertyActionInitializer}
+             */
+            PropertyAction.prototype.getInitializer = function () {
+                var init = _super.prototype.getInitializer.call(this);
+                if (this._fromValuesSet) {
+                    init.from = this._from;
+                }
+                init.to = this._to;
+                init.type = "PropertyAction";
+                return init;
             };
             return PropertyAction;
         })(Action);
@@ -8460,14 +8873,19 @@ var cc;
                  * @type {number}
                  */
                 this._endAngle = 360;
-                if (typeof data !== "undefined") {
-                    this._startAngle = data.start;
-                    this._endAngle = data.end;
-                    if (typeof data.relative !== "undefined") {
-                        this.setRelative(data.relative);
-                    }
+                if (data) {
+                    this.__createFromInitializer(data);
                 }
             }
+            /**
+             * Initialize the action with an initializer object.
+             * @method cc.action.RotateAction#__createFromInitializer
+             * @param initializer {cc.action.RotateActionInitializer}
+             * @private
+             */
+            RotateAction.prototype.__createFromInitializer = function (initializer) {
+                _super.prototype.__createFromInitializer.call(this, initializer);
+            };
             /**
              * Update target Node's rotation angle.
              * {@link cc.action.Action#update}
@@ -8544,6 +8962,20 @@ var cc;
                 }
                 this.__genericCloneProperties(copy);
                 return copy;
+            };
+            /**
+             * Serialize the action current definition.
+             * @method cc.action.RotateAction#getInitializer
+             * @returns {cc.action.RotateActionInitializer}
+             */
+            RotateAction.prototype.getInitializer = function () {
+                var init = _super.prototype.getInitializer.call(this);
+                if (this._fromValuesSet) {
+                    init.from = this._startAngle;
+                }
+                init.to = this._endAngle;
+                init.type = "RotateAction";
+                return init;
             };
             return RotateAction;
         })(Action);
@@ -8624,16 +9056,19 @@ var cc;
                  * @type {number}
                  */
                 this._scaleY1 = 1;
-                if (typeof data !== "undefined") {
-                    this._scaleX0 = data.x0;
-                    this._scaleY0 = data.y0;
-                    this._scaleX1 = data.x1;
-                    this._scaleY1 = data.y1;
-                    if (typeof data.relative !== "undefined") {
-                        this.setRelative(data.relative);
-                    }
+                if (data) {
+                    this.__createFromInitializer(data);
                 }
             }
+            /**
+             * Initialize the action with an initializer object.
+             * @method cc.action.ScaleAction#__createFromInitializer
+             * @param data {cc.action.ScaleActionInitializer}
+             * @private
+             */
+            ScaleAction.prototype.__createFromInitializer = function (initializer) {
+                _super.prototype.__createFromInitializer.call(this, initializer);
+            };
             /**
              * Update target Node's scale.
              * {@link cc.action.Action#update}
@@ -8715,6 +9150,20 @@ var cc;
                 this.__genericCloneProperties(copy);
                 return copy;
             };
+            /**
+             * Serialize the action current definition.
+             * @method cc.action.ScaleAction#getInitializer
+             * @returns {cc.action.ScaleActionInitializer}
+             */
+            ScaleAction.prototype.getInitializer = function () {
+                var init = _super.prototype.getInitializer.call(this);
+                if (this._fromValuesSet) {
+                    init.from = { x: this._scaleX0, y: this._scaleY0 };
+                }
+                init.to = { x: this._scaleX1, y: this._scaleY1 };
+                init.type = "ScaleAction";
+                return init;
+            };
             return ScaleAction;
         })(Action);
         action.ScaleAction = ScaleAction;
@@ -8744,12 +9193,6 @@ var cc;
     (function (_action) {
         "use strict";
         var Action = cc.action.Action;
-        var MoveAction = cc.action.MoveAction;
-        var RotateAction = cc.action.RotateAction;
-        var ScaleAction = cc.action.ScaleAction;
-        var PropertyAction = cc.action.PropertyAction;
-        var AlphaAction = cc.action.AlphaAction;
-        var TintAction = cc.action.TintAction;
         /**
          * @class cc.action.SequenceAction
          * @extends cc.action.Action
@@ -8798,7 +9241,24 @@ var cc;
                 this._sequential = true;
                 this._prevOnRepeat = null;
                 if (typeof data !== "undefined") {
+                    this.__createFromInitializer(data);
+                }
+            }
+            /**
+             * Initialize the action with an initializer object.
+             * @method cc.action.SequenceAction#__createFromInitializer
+             * @param data {cc.action.SequenceActionInitializer}
+             * @private
+             */
+            SequenceAction.prototype.__createFromInitializer = function (data) {
+                _super.prototype.__createFromInitializer.call(this, data);
+                if (typeof data.sequential !== "undefined") {
                     this._sequential = data.sequential;
+                }
+                if (data.actions) {
+                    for (var i = 0; i < data.actions.length; i++) {
+                        this.addAction(cc.action.ParseAction(data.actions[i]));
+                    }
                 }
                 this._onRepeat = function (action, target, repetitionCount) {
                     var seq = action;
@@ -8807,16 +9267,45 @@ var cc;
                         seq._prevOnRepeat(action, target, repetitionCount);
                     }
                 };
-            }
+            };
+            /**
+             * Set onRepeat callback. This method is overridden since repeating sequences must have a custom onRepeat
+             * implementation.
+             * @method cc.action.SequenceAction#onRepeat
+             * @param callback {cc.action.ActionCallbackRepeatCallback}
+             * @returns {cc.action.SequenceAction}
+             */
             SequenceAction.prototype.onRepeat = function (callback) {
                 this._prevOnRepeat = callback;
                 return this;
             };
+            /**
+             * When a Sequence repeats, it must recursively clear the status of all its children Actions.
+             * @method cc.action.SequenceAction#recursivelySetCreatedStatus
+             * @param target
+             */
             SequenceAction.prototype.recursivelySetCreatedStatus = function (target) {
                 for (var i = 0; i < this._actions.length; i++) {
                     this._actions[i].__recursivelySetCreatedStatus(target);
                 }
             };
+            /**
+             * Get the last Action on the sequence.
+             * @method cc.action.SequenceAction#getLastAction
+             * @returns {cc.action.Action}
+             */
+            SequenceAction.prototype.getLastAction = function () {
+                if (this._actions.length === 0) {
+                    return null;
+                }
+                return this._actions[this._actions.length - 1];
+            };
+            /**
+             * Recursive set created status implementation.
+             * @method cc.action.SequenceAction#__recursivelySetCreatedStatus
+             * @param target {object}
+             * @private
+             */
             SequenceAction.prototype.__recursivelySetCreatedStatus = function (target) {
                 for (var i = 0; i < this._actions.length; i++) {
                     this._actions[i].__recursivelySetCreatedStatus(target);
@@ -8831,6 +9320,9 @@ var cc;
              * @private
              */
             SequenceAction.prototype.__updateDuration = function () {
+                if (!this._actions) {
+                    return;
+                }
                 var duration = 0;
                 this.__sequentializeStartAndDuration();
                 for (var i = 0; i < this._actions.length; i++) {
@@ -8874,7 +9366,7 @@ var cc;
              */
             SequenceAction.prototype.addAction = function (a) {
                 this._actions.push(a);
-                a._owner = this._owner;
+                a._chainContext = this._chainContext;
                 a._parentSequence = this;
                 this.__updateDuration();
                 return this;
@@ -8974,77 +9466,27 @@ var cc;
                 return this;
             };
             /**
-             * @override
-             * @inheritDoc
+             * Set the Sequence as Sequence (sequential=true) or Spawn (sequential=false).
+             * @method cc.action.SequenceAction#setSequential
+             * @param b {boolean}
              */
-            SequenceAction.prototype.actionMove = function () {
-                var a = new MoveAction();
-                this.addAction(a);
-                return a;
+            SequenceAction.prototype.setSequential = function (b) {
+                this._sequential = b;
             };
             /**
-             * @override
-             * @inheritDoc
+             * Serialize the action current definition.
+             * @method cc.action.SequenceAction#getInitializer
+             * @returns {cc.action.SequenceActionInitializer}
              */
-            SequenceAction.prototype.actionRotate = function () {
-                var a = new RotateAction();
-                this.addAction(a);
-                return a;
-            };
-            /**
-             * @override
-             * @inheritDoc
-             */
-            SequenceAction.prototype.actionScale = function () {
-                var a = new ScaleAction();
-                this.addAction(a);
-                return a;
-            };
-            /**
-             * @override
-             * @inheritDoc
-             */
-            SequenceAction.prototype.actionAlpha = function () {
-                var a = new AlphaAction();
-                this.addAction(a);
-                return a;
-            };
-            /**
-             * @override
-             * @inheritDoc
-             */
-            SequenceAction.prototype.actionTint = function () {
-                var a = new TintAction();
-                this.addAction(a);
-                return a;
-            };
-            /**
-             * @override
-             * @inheritDoc
-             */
-            SequenceAction.prototype.actionProperty = function () {
-                var a = new PropertyAction();
-                this.addAction(a);
-                return a;
-            };
-            /**
-             * @override
-             * @inheritDoc
-             */
-            SequenceAction.prototype.actionSequence = function () {
-                var a = new SequenceAction();
-                this.addAction(a);
-                return a;
-            };
-            /**
-             * @override
-             * @inheritDoc
-             */
-            SequenceAction.prototype.endSequence = function () {
-                if (!this._parentSequence) {
-                    return this;
+            SequenceAction.prototype.getInitializer = function () {
+                var init = _super.prototype.getInitializer.call(this);
+                init.type = "SequenceAction";
+                init.sequential = this._sequential;
+                init.actions = [];
+                for (var i = 0; i < this._actions.length; i++) {
+                    init.actions.push(this._actions[i].getInitializer());
                 }
-                return this._parentSequence;
+                return init;
             };
             return SequenceAction;
         })(Action);
@@ -9108,18 +9550,19 @@ var cc;
                  * @type {cc.math.RGBAColor}
                  */
                 this._endColor = { r: 1, g: 1, b: 1 };
-                if (typeof data !== "undefined") {
-                    this._startColor.r = data.r0;
-                    this._startColor.g = data.g0;
-                    this._startColor.b = data.b0;
-                    this._endColor.r = data.r1;
-                    this._endColor.g = data.g1;
-                    this._endColor.b = data.b1;
-                    if (typeof data.relative !== "undefined") {
-                        this.setRelative(data.relative);
-                    }
+                if (data) {
+                    this.__createFromInitializer(data);
                 }
             }
+            /**
+             * Initialize the action with an initializer object.
+             * @method cc.action.TintAction#__createFromInitializer
+             * @param data {cc.action.TintActionInitializer}
+             * @private
+             */
+            TintAction.prototype.__createFromInitializer = function (initializer) {
+                _super.prototype.__createFromInitializer.call(this, initializer);
+            };
             /**
              * Update target Node's tint color.
              * {@link cc.action.Action#update}
@@ -9215,6 +9658,20 @@ var cc;
                 this.__genericCloneProperties(copy);
                 return copy;
             };
+            /**
+             * Serialize the action current definition.
+             * @method cc.action.TintAction#getInitializer
+             * @returns {cc.action.TintActionInitializer}
+             */
+            TintAction.prototype.getInitializer = function () {
+                var init = _super.prototype.getInitializer.call(this);
+                if (this._fromValuesSet) {
+                    init.from = { r: this._startColor.r, g: this._startColor.g, b: this._startColor.b };
+                }
+                init.to = { r: this._endColor.r, g: this._endColor.g, b: this._endColor.b };
+                init.type = "TintAction";
+                return init;
+            };
             return TintAction;
         })(Action);
         action.TintAction = TintAction;
@@ -9287,10 +9744,24 @@ var cc;
                  * @private
                  */
                 this._animation = null;
-                if (typeof data !== "undefined") {
-                    this.setAnimation(data);
+                if (data) {
+                    if (data instanceof cc.node.sprite.Animation) {
+                        this.setAnimation(data);
+                    }
+                    else {
+                        this.__createFromInitializer(data);
+                    }
                 }
             }
+            /**
+             * Initialize the action with an initializer Object
+             * @method cc.action.AnimateAction#__createFromInitializer
+             * @param data {cc.action.AnimateActionInitializer}
+             */
+            AnimateAction.prototype.__createFromInitializer = function (data) {
+                _super.prototype.__createFromInitializer.call(this, data);
+                this.setAnimation(cc.plugin.asset.AssetManager.getAnimationById(data.animationName));
+            };
             /**
              * Set the Animation object instance.
              * @method cc.action.AnimateAction#setAnimation
@@ -9388,6 +9859,17 @@ var cc;
                 if (this._animation._restoreOriginalFrame) {
                     node.setSpriteFrame(this._originalSpriteFrame);
                 }
+            };
+            /**
+             * Get current action state initializer object.
+             * @method cc.action.AnimateAction#getInitializer
+             * @returns {cc.action.AnimateActionInitializer}
+             */
+            AnimateAction.prototype.getInitializer = function () {
+                var init = _super.prototype.getInitializer.call(this);
+                init.type = "AnimateAction";
+                init.animationName = this._animation._name;
+                return init;
             };
             return AnimateAction;
         })(Action);
@@ -9500,13 +9982,21 @@ var cc;
                  */
                 this._spriteOrientationLR = true;
                 if (typeof data !== "undefined") {
-                    // BUGBUG initializer must have serializable data.
-                    this._segment = data.segment;
-                    if (typeof data.relative !== "undefined") {
-                        this.setRelative(data.relative);
-                    }
+                    this.__createFromInitializer(data);
                 }
             }
+            /**
+             * Initialize the action with an initializer object.
+             * @method cc.action.PathAction#__createFromInitializer
+             * @param data {cc.action.PathActionInitializer}
+             * @private
+             */
+            PathAction.prototype.__createFromInitializer = function (data) {
+                _super.prototype.__createFromInitializer.call(this, data);
+                // BUGBUG initializer must have serializable data.
+                console.log("Path initializer not yet implemented.");
+                this._segment = data.segment;
+            };
             /**
              * Update target Node's position.
              * {@link cc.action.Action#update}
@@ -9542,6 +10032,18 @@ var cc;
                 }
                 return __PathActionUpdateValue;
             };
+            /**
+             * Calculate a tangential angle based on the current path position.
+             * It the node is a sprite, it will also flip the node if necessary based on the property:
+             * _tangentialRotationFullAngle and _spriteOrientationLR
+             *
+             * @method cc.action.PathAction#__getTangentialAngle
+             * @param node {cc.node.Node|cc.node.Sprite}
+             * @param lefttoright {boolean}
+             * @param angle {number}
+             * @returns {number}
+             * @private
+             */
             PathAction.prototype.__getTangentialAngle = function (node, lefttoright, angle) {
                 if (!this._tangentialRotationFullAngle) {
                     if (this._spriteOrientationLR) {
@@ -9565,6 +10067,11 @@ var cc;
                 }
                 return angle * 180 / Math.PI;
             };
+            /**
+             * Restart the action.
+             * @method cc.action.PathAction#restart
+             * @returns {cc.action.PathAction}
+             */
             PathAction.prototype.restart = function () {
                 _super.prototype.restart.call(this);
                 this._pathAdjusted = false;
@@ -9675,6 +10182,17 @@ var cc;
                 this._spriteOrientationLR = v;
                 return this;
             };
+            /**
+             * Serialize the action current definition.
+             * @method cc.action.PathAction#getInitializer
+             * @returns {cc.action.PathActionInitializer}
+             */
+            PathAction.prototype.getInitializer = function () {
+                var init = _super.prototype.getInitializer.call(this);
+                init.type = "PathAction";
+                // bugbug pathAction can not serialize path object.
+                return init;
+            };
             return PathAction;
         })(Action);
         action.PathAction = PathAction;
@@ -9746,15 +10264,24 @@ var cc;
                  */
                 this._jumps = 1;
                 this._jumpTo = null;
+                if (data) {
+                    this.__createFromInitializer(data);
+                }
+            }
+            /**
+             * Initialize the action with an initializer object.
+             * @method cc.action.JumpAction#__createFromInitializer
+             * @param data {cc.action.JumpActionInitializer}
+             * @private
+             */
+            JumpAction.prototype.__createFromInitializer = function (data) {
+                _super.prototype.__createFromInitializer.call(this, data);
                 if (typeof data !== "undefined") {
                     this._amplitude = data.amplitude;
                     this._jumps = data.jumps;
                     this._jumpTo = new Vector(data.position.x, data.position.y);
-                    if (typeof data.relative !== "undefined") {
-                        this.setRelative(data.relative);
-                    }
                 }
-            }
+            };
             /**
              * Update target Node's position.
              * {@link cc.action.Action#update}
@@ -9813,6 +10340,22 @@ var cc;
                 this.__genericCloneProperties(copy);
                 return copy;
             };
+            /**
+             * Serialize the action current definition.
+             * @method cc.action.JumpAction#getInitializer
+             * @returns {cc.action.JumpActionInitializer}
+             */
+            JumpAction.prototype.getInitializer = function () {
+                var init = _super.prototype.getInitializer.call(this);
+                init.type = "JumpAction";
+                init.jumps = this._jumps;
+                init.amplitude = this._amplitude;
+                init.position = {
+                    x: this._jumpTo.x,
+                    y: this._jumpTo.y
+                };
+                return init;
+            };
             return JumpAction;
         })(Action);
         action.JumpAction = JumpAction;
@@ -9830,15 +10373,14 @@ var cc;
     var action;
     (function (__action) {
         "use strict";
-        var SequenceAction = cc.action.SequenceAction;
         var __index = 0;
         /**
          * @class cc.action.ActionInfo
          * @classdesc
          *
          * This class is the information an <code>ActionManager</code> manages and keeps track of an
-         * <code>Action</code> and a <code>Node</code>. It is an internal class for ActionManagers.
-         *
+         * <code>Action</code> and a <code>Target</code>. It is an internal class for ActionManagers
+         * <p>
          * You will have no direct interaction with this class.
          *
          */
@@ -9850,7 +10392,7 @@ var cc;
                 this._chain = null;
             }
             ActionInfo.prototype.__action = function (bh) {
-                bh.__setOwner(this._actionManager);
+                //bh.__setOwner(this._actionManager);
                 if (this._chain !== null) {
                     bh._chainAction = this._chain._action;
                 }
@@ -9867,30 +10409,6 @@ var cc;
                  */
                 a.setDelay(a._startTime / cc.action.TIMEUNITS);
                 return a;
-            };
-            ActionInfo.prototype.actionMove = function () {
-                return this.__action(new __action.MoveAction());
-            };
-            ActionInfo.prototype.actionRotate = function () {
-                return this.__action(new __action.RotateAction());
-            };
-            ActionInfo.prototype.actionProperty = function () {
-                return this.__action(new __action.PropertyAction());
-            };
-            ActionInfo.prototype.actionAlpha = function () {
-                return this.__action(new __action.AlphaAction());
-            };
-            ActionInfo.prototype.actionTint = function () {
-                return this.__action(new __action.TintAction());
-            };
-            ActionInfo.prototype.actionScale = function () {
-                return this.__action(new __action.ScaleAction());
-            };
-            ActionInfo.prototype.actionSequence = function () {
-                return this.__action(new SequenceAction());
-            };
-            ActionInfo.prototype.endSequence = function () {
-                return this._action._parentSequence;
             };
             ActionInfo.prototype.step = function (elapsedTime) {
                 this._action.step(elapsedTime, this._target);
@@ -9924,30 +10442,16 @@ var cc;
          * The ActionManager has a virtual timeline fed by Directors or Scenes.
          * On average, no direct interaction with this class will happen.
          * <br>
-         * This class also offers a new API interface for adding actions to a Node. For example:
-         *
-         * <pre>
-         * am.startChainingActionsForNode(n0).
-         *        actionSequence().
-         *            setRepeatForever().
-         *            actionRotate().
-         *                to(360).
-         *                setRelative(true).
-         *                setDuration(1000).
-         *            actionSequence().
-         *                actionScale().
-         *                    to({ x: .5, y: .5 }).
-         *                    setRelative(true).
-         *                    setDuration(1500).
-         *                actionRotate().
-         *                    to(0).
-         *                    setRelative(true).
-         *                    setDuration(1500).
-         *            endSequence().
-         * </pre>
-         *
+         * <p>
+         *     ActionManager instances have a scheduler implementation as an Action of type: SchedulerQueue
          */
         var ActionManager = (function () {
+            /**
+             * Create a new ActionManager instance object.
+             * The developer will surely never interact directly with this object.
+             * The why to work with it is by calling Node Action/Scheduler methods.
+             * @member cc.action.ActionManager#constructor
+             */
             function ActionManager() {
                 /**
                  * Collection of pairs of Node-Action to execute.
@@ -9956,7 +10460,25 @@ var cc;
                  * @private
                  */
                 this._actionInfos = [];
+                /**
+                 * In V4 a scheduler is an Action, integrated in the ActionManager.
+                 * This is the SchedulerQueue implementation.
+                 * @member cc.action.ActionManager#_scheduler
+                 * @type {cc.action.SchedulerQueue}
+                 * @private
+                 */
+                this._scheduler = null;
+                this._scheduler = new __action.SchedulerQueue();
+                this.scheduleActionForNode(null, this._scheduler);
             }
+            /**
+             * Get the Scheduler instance.
+             * @member cc.action.ActionManager#getScheduler
+             * @returns {cc.action.SchedulerQueue}
+             */
+            ActionManager.prototype.getScheduler = function () {
+                return this._scheduler;
+            };
             /**
              * Associate a target with an action.
              * This method is useful when you pretend to reuse predefined behavior objects.
@@ -9986,6 +10508,11 @@ var cc;
                 }
                 return this;
             };
+            /**
+             * Stop the Action objects associated with a target object.
+             * @param target
+             * @returns {cc.action.ActionManager}
+             */
             ActionManager.prototype.stopActionsForNode = function (target) {
                 for (var i = 0; i < this._actionInfos.length; i++) {
                     if (this._actionInfos[i]._target === target) {
@@ -9993,17 +10520,6 @@ var cc;
                     }
                 }
                 return this;
-            };
-            /**
-             * Start a chaining actions for a Node.
-             * @method cc.action.ActionManager#startChainingActionsForNode
-             * @param target {cc.node.Node} normally a Node, but could be any other object.
-             * @returns {cc.action.ActionInfo}
-             */
-            ActionManager.prototype.startChainingActionsForNode = function (target) {
-                var ai = new ActionInfo(this, target);
-                this._actionInfos.push(ai);
-                return ai;
             };
             /**
              * Helper method to build a new ActionInfo with basic information.
@@ -10015,73 +10531,6 @@ var cc;
                 var ai = new ActionInfo(this, this._actionInfos[this._actionInfos.length - 1]._target);
                 this._actionInfos.push(ai);
                 return ai;
-            };
-            /**
-             * Create and add a MoveAction object to the current Node.
-             * @method cc.action.ActionManager#actionMove
-             * @returns {cc.action.Action}
-             */
-            ActionManager.prototype.actionMove = function () {
-                return this.__newActionInfo().actionMove();
-            };
-            /**
-             * Create and add a RotateAction object to the current Node.
-             * @method cc.action.ActionManager#actionRotate
-             * @returns {cc.action.Action}
-             */
-            ActionManager.prototype.actionRotate = function () {
-                return this.__newActionInfo().actionRotate();
-            };
-            /**
-             * Create and add a AlphaAction object to the current Node.
-             * @method cc.action.ActionManager#actionAlpha
-             * @returns {cc.action.Action}
-             */
-            ActionManager.prototype.actionAlpha = function () {
-                return this.__newActionInfo().actionAlpha();
-            };
-            /**
-             * Create and add a TintAction object to the current Node.
-             * @method cc.action.ActionManager#actionTint
-             * @returns {cc.action.Action}
-             */
-            ActionManager.prototype.actionTint = function () {
-                return this.__newActionInfo().actionTint();
-            };
-            /**
-             * Create and add a ScaleAction object to the current Node.
-             * @method cc.action.ActionManager#actionScale
-             * @returns {cc.action.Action}
-             */
-            ActionManager.prototype.actionScale = function () {
-                return this.__newActionInfo().actionScale();
-            };
-            /**
-             * Create and add a PropertyAction object to the current Node.
-             * @method cc.action.ActionManager#actionProperty
-             * @returns {Action}
-             */
-            ActionManager.prototype.actionProperty = function () {
-                return this.__newActionInfo().actionProperty();
-            };
-            /**
-             * Create and add a SequenceAction object to the current Node.
-             * @method cc.action.ActionManager#actionSequence
-             * @returns {SequenceAction}
-             */
-            ActionManager.prototype.actionSequence = function () {
-                return this.__newActionInfo().actionSequence();
-            };
-            /**
-             * Chain an action to the previous one. Chaining will make them sequential in time.
-             * @method cc.action.ActionManager#then
-             * @returns {cc.action.ActionInfo}
-             */
-            ActionManager.prototype.then = function () {
-                var ltw = this._actionInfos[this._actionInfos.length - 1];
-                var tw = this.startChainingActionsForNode(ltw._target);
-                tw.setChain(ltw);
-                return tw;
             };
             /**
              * Execute all scheduled Actions in this ActionManager.
@@ -10139,19 +10588,30 @@ var cc;
                 return this._actionInfos.length;
             };
             /**
-             * Get the number of scheduled actions (in any state).
-             * @method cc.action.ActionManager#getNumActionsForNode
-             * @param node {cc.node.Node} Node to check for actions.
-             * @returns {number} number of actions for the Node.
+             * Get the number of scheduled actions (in any state) for a target.
+             * @method cc.action.ActionManager#getNumActionsForTarget
+             * @param target {object} target to check for actions.
+             * @returns {number} number of actions for the target.
              */
-            ActionManager.prototype.getNumActionsForNode = function (node) {
+            ActionManager.prototype.getNumActionsForTarget = function (target) {
                 var count = 0;
                 for (var i = 0; i < this._actionInfos.length; i++) {
-                    if (this._actionInfos[i]._target === node) {
+                    if (this._actionInfos[i]._target === target) {
                         count++;
                     }
                 }
                 return count;
+            };
+            /**
+             * Get the number of scheduled actions (in any state).
+             * @method cc.action.ActionManager#getNumActionsForNode
+             * @param node {object} target to check for actions.
+             * @returns {number} number of actions for the Node.
+             *
+             * @deprecated use getNumActionsForTarget instead.
+             */
+            ActionManager.prototype.getNumActionsForNode = function (node) {
+                return this.getNumActionsForTarget(node);
             };
             return ActionManager;
         })();
@@ -10412,15 +10872,39 @@ var cc;
                 this._status = 2 /* RUNNING */;
                 this._firstExecution = false;
             }
+            /**
+             * SchedulerQueue repeats forever by default.
+             * @method cc.action.SchedulerAction#setRepeatForever
+             * @returns {cc.action.SchedulerQueue}
+             */
             SchedulerQueue.prototype.setRepeatForever = function () {
                 return this;
             };
+            /**
+             * SchedulerQueue repeats forever by default.
+             * @method cc.action.SchedulerAction#setRepeatTimes
+             * @param n {number}
+             * @returns {cc.action.SchedulerQueue}
+             */
             SchedulerQueue.prototype.setRepeatTimes = function (n) {
                 return this;
             };
+            /**
+             * SchedulerQueue have 0 duration.
+             * @method cc.action.SchedulerAction#setDuration
+             * @param d {number}
+             * @returns {cc.action.SchedulerQueue}
+             */
             SchedulerQueue.prototype.setDuration = function (d) {
                 return this;
             };
+            /**
+             * SchedulerQueue can't have time info redefined.
+             * @method cc.action.SchedulerAction#timeInfo
+             * @param delay {number}
+             * @param duration {number}
+             * @returns {cc.action.SchedulerQueue}
+             */
             SchedulerQueue.prototype.timeInfo = function (delay, duration) {
                 return this;
             };
@@ -10648,6 +11132,448 @@ var cc;
 /**
  * License: see license.txt file
  */
+/// <reference path="../node/Node.ts"/>
+/// <reference path="./MoveAction.ts"/>
+/// <reference path="./JumpAction.ts"/>
+/// <reference path="./RotateAction.ts"/>
+/// <reference path="./PropertyAction.ts"/>
+/// <reference path="./AlphaAction.ts"/>
+/// <reference path="./TintAction.ts"/>
+/// <reference path="./ScaleAction.ts"/>
+/// <reference path="./SequenceAction.ts"/>
+/// <reference path="./PathAction.ts"/>
+var cc;
+(function (cc) {
+    var action;
+    (function (_action) {
+        /**
+         * This function parses an Action based on an initializer object.
+         * Initializer objects are just JSON objects which could got from a call to action.getInitializer().
+         * @name ParseAction
+         * @memberOf cc.action
+         * @param actionDef {cc.action.ActionInitializer}
+         * @returns {cc.action.Action}
+         */
+        function ParseAction(actionDef) {
+            if (cc.action[actionDef.type] !== "undefined") {
+                var action = new cc.action[actionDef.type]();
+                action.__createFromInitializer(actionDef);
+                return action;
+            }
+            console.log("Error, action initializer w/o type.");
+            console.log(JSON.stringify(actionDef, null, 2));
+            return null;
+        }
+        _action.ParseAction = ParseAction;
+        /**
+         * @class cc.action.ActionChainContext
+         * @classdesc
+         *
+         * An ActionChainContext is an object whose only purpose is offer a chainable Action construction API.
+         * It keeps track of the last created action and its type. It is a fachade to the last created action for a Node
+         * so that calling the chain context methods will forward calls to such Action.
+         * It is expected to execute in the context of a cc.node.Node object only.
+         * For example, this object allows for an api call like this:
+         *
+         * <code>
+         *     actionSequence().
+         *        setRepeatForever().
+         *        onEnd( function() {
+         *            console.log("end");
+         *        }).
+         *        actionRotate().
+         *            to(180).
+         *            setRelative(true).
+         *            setDuration(1).
+         *        actionScale().
+         *            to( {x:0, y:1 }).
+         *            setRelative(true).
+         *            setDuration(1.5).
+         *        actionScale().
+         *            to( {x:1, y:1}).
+         *            setRelative(true).
+         *            setDuration(1.5).
+         *        actionTint().
+         *            to( {r: -.5, g: -.5, b: -.5 } ).
+         *            setRelative(true).
+         *            setDuration( 2).
+         *    endSequence();
+         * </code>
+         *
+         */
+        var ActionChainContext = (function () {
+            /**
+             * Node for which the chain actions are being performed.
+             * @name _target
+             * @memberof cc.action.ActionChainContext
+             * @type {cc.node.Node}
+             */
+            /**
+             * Create a new ActionChainContext object instance.
+             * @method cc.action.ActionChainContext#constructor
+             * @constructor
+             * @param _target {cc.node.Node}
+             */
+            function ActionChainContext(_target) {
+                this._target = _target;
+                /**
+                 * When a call to .then() is made, this property keeps track of the previously built action.
+                 * @member cc.action.ActionChainContext#_chainAction
+                 * @type {cc.action.Action}
+                 * @private
+                 */
+                this._chainAction = null;
+                /**
+                 * The current action the chain context methods will forward calls to.
+                 * @member cc.action.ActionChainContext#_currentAction
+                 * @type {cc.action.Action}
+                 * @private
+                 */
+                this._currentAction = null;
+                /**
+                 * Stack which tracks how many actionSequence calls have been done.
+                 * @member cc.action.ActionChainContext#_sequenceStack
+                 * @type {Array<cc.action.SequenceAction>}
+                 * @private
+                 */
+                this._sequenceStack = [];
+                /**
+                 * Last SequenceAction tracked.
+                 * @member cc.action.ActionChainContext#_currentSequence
+                 * @type {cc.action.SequenceAction}
+                 * @private
+                 */
+                this._currentSequence = null;
+            }
+            /**
+             * Create an Action from a constructor function.
+             * If a new SequenceAction is to be build, it will be pushed to the SequenceAction stack.
+             * The resulting action will be set as the current chain context Action so that all context calls will be forwarded
+             * to this action.
+             * @method cc.action.ActionChainContext#__action
+             * @param ctor {object} a constructor function
+             * @returns {cc.action.ActionChainContext}
+             * @private
+             */
+            ActionChainContext.prototype.__action = function (ctor) {
+                this.action(new ctor());
+                if (ctor === cc.action.SequenceAction) {
+                    this._sequenceStack.push(this._currentAction);
+                    this._currentSequence = this._currentAction;
+                }
+                return this;
+            };
+            /**
+             * Chain a complete action or an action built form an ActionInitializer object.
+             * @method cc.action.ActionChainContext#action
+             * @param _currentAction {cc.action.Action|cc.action.ActionInitializer}
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.action = function (_currentAction) {
+                var currentAction;
+                if (_currentAction instanceof cc.action.Action) {
+                    currentAction = _currentAction;
+                }
+                else {
+                    currentAction = cc.action.ParseAction(_currentAction);
+                }
+                if (this._currentSequence) {
+                    this._currentSequence.addAction(currentAction);
+                }
+                else {
+                    this._target.runAction(currentAction);
+                }
+                if (this._chainAction) {
+                    currentAction._chainAction = this._chainAction;
+                    this._chainAction = null;
+                }
+                this._currentAction = currentAction;
+                currentAction.__updateDuration();
+                return this;
+            };
+            /**
+             * Start chaining for a new PathAction.
+             * @method cc.action.ActionChainContext#actionPath
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.actionPath = function () {
+                return this.__action(cc.action.PathAction);
+            };
+            /**
+             * Start chaining for a new MoveAction.
+             * @method cc.action.ActionChainContext#actionMove
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.actionMove = function () {
+                return this.__action(cc.action.MoveAction);
+            };
+            /**
+             * Start chaining for a new RotateAction.
+             * @method cc.action.ActionChainContext#actionRotate
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.actionRotate = function () {
+                return this.__action(cc.action.RotateAction);
+            };
+            /**
+             * Start chaining for a new PropertyAction.
+             * @method cc.action.ActionChainContext#actionProperty
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.actionProperty = function () {
+                return this.__action(cc.action.PropertyAction);
+            };
+            /**
+             * Start chaining for a new AlphaAction.
+             * @method cc.action.ActionChainContext#actionAlpha
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.actionAlpha = function () {
+                return this.__action(cc.action.AlphaAction);
+            };
+            /**
+             * Start chaining for a new TintAction.
+             * @method cc.action.ActionChainContext#actionTint
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.actionTint = function () {
+                return this.__action(cc.action.TintAction);
+            };
+            /**
+             * Start chaining for a new ScaleAction.
+             * @method cc.action.ActionChainContext#actionScale
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.actionScale = function () {
+                return this.__action(cc.action.ScaleAction);
+            };
+            /**
+             * Start chaining for a new SequenceAction.
+             * @method cc.action.ActionChainContext#actionSequence
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.actionSequence = function () {
+                return this.__action(cc.action.SequenceAction);
+            };
+            /**
+             * End a Sequence Action context.
+             * This will pop the latest Sequence from the stack.
+             * If the stack gets empty, actions will be added in the context of the Target node, and not the sequence.
+             * @method cc.action.ActionChainContext#endSequence
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.endSequence = function () {
+                if (this._sequenceStack.length) {
+                    this._sequenceStack.pop();
+                    if (this._sequenceStack.length) {
+                        this._currentSequence = this._sequenceStack[this._sequenceStack.length - 1];
+                    }
+                    else {
+                        this._currentSequence = null;
+                    }
+                    this._currentAction = this._currentSequence;
+                }
+                return this;
+            };
+            /**
+             * Set action 'from' value for the current action.
+             * @method cc.action.ActionChainContext#from
+             * @param obj {object} the value to set for 'from' action property.
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.from = function (obj) {
+                if (this._currentAction) {
+                    this._currentAction.from(obj);
+                }
+                return this;
+            };
+            /**
+             * Set action 'to' value for the current action.
+             * @method cc.action.ActionChainContext#from
+             * @param obj {object} the value to set for 'from' action property.
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.to = function (obj) {
+                if (this._currentAction) {
+                    this._currentAction.to(obj);
+                }
+                return this;
+            };
+            /**
+             * Set action interpolator value for the current action.
+             * @method cc.action.ActionChainContext#setInterpolator
+             * @param i {cc.action.TimeInterpolator} a interpolator (easing function).
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.setInterpolator = function (i) {
+                if (this._currentAction) {
+                    this._currentAction.setInterpolator(i);
+                }
+                return this;
+            };
+            /**
+             * Set action as relative.
+             * @method cc.action.ActionChainContext#setRelative
+             * @param b {boolean}
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.setRelative = function (b) {
+                if (this._currentAction) {
+                    this._currentAction.setRelative(b);
+                }
+                return this;
+            };
+            /**
+             * Set action duration.
+             * @method cc.action.ActionChainContext#setDuration
+             * @param d {number}
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.setDuration = function (d) {
+                if (this._currentAction) {
+                    this._currentAction.setDuration(d);
+                }
+                return this;
+            };
+            /**
+             * Set action repetition forever.
+             * @method cc.action.ActionChainContext#setRepeatForever
+             * @param obj {cc.action.RepeatTimesOptions=} some repetition attributes.
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.setRepeatForever = function (obj) {
+                if (this._currentAction) {
+                    this._currentAction.setRepeatForever(obj);
+                }
+                return this;
+            };
+            /**
+             * Set action repetition times.
+             * @method cc.action.ActionChainContext#setRepeatTimes
+             * @param n {number} repetition count
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.setRepeatTimes = function (n) {
+                if (this._currentAction) {
+                    this._currentAction.setRepeatTimes(n);
+                }
+                return this;
+            };
+            /**
+             * Chain two actions. After a call to then, any of the actionXXX methods should be called. The newly
+             * created action will be chained with the current one. Chain means that will start when the preivous ends.
+             * @method cc.action.ActionChainContext#then
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.then = function () {
+                this._chainAction = this._currentAction;
+                return this;
+            };
+            /**
+             * Set duration and interpolator into in one call.
+             * @method cc.action.ActionChainContext#timeInfo
+             * @param delay {number} delay before application
+             * @param duration {number} action duration in time units.
+             * @param interpolator {cc.action.TimeInterpolator=} optional interpolator
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.timeInfo = function (delay, duration, interpolator) {
+                this._currentAction.timeInfo(delay, duration, interpolator);
+                return this;
+            };
+            /**
+             * Set action onEnd callback.
+             * @method cc.action.ActionChainContext#onEnd
+             * @param f {cc.action.ActionCallbackStartOrEndOrPauseOrResumeCallback}
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.onEnd = function (f) {
+                if (this._currentAction) {
+                    this._currentAction.onEnd(f);
+                }
+                return this;
+            };
+            /**
+             * Set action onStart callback.
+             * @method cc.action.ActionChainContext#onStart
+             * @param f {cc.action.ActionCallbackStartOrEndOrPauseOrResumeCallback}
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.onStart = function (f) {
+                if (this._currentAction) {
+                    this._currentAction.onStart(f);
+                }
+                return this;
+            };
+            /**
+             * Set action onRepeat callback.
+             * @method cc.action.ActionChainContext#onRepeat
+             * @param f {cc.action.ActionCallbackRepeatCallback}
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.onRepeat = function (f) {
+                if (this._currentAction) {
+                    this._currentAction.onRepeat(f);
+                }
+                return this;
+            };
+            /**
+             * Set action onPause callback.
+             * @method cc.action.ActionChainContext#onPause
+             * @param f {cc.action.ActionCallbackStartOrEndOrPauseOrResumeCallback}
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.onPause = function (f) {
+                if (this._currentAction) {
+                    this._currentAction.onPause(f);
+                }
+                return this;
+            };
+            /**
+             * Set action onResume callback.
+             * @method cc.action.ActionChainContext#onResume
+             * @param f {cc.action.ActionCallbackStartOrEndOrPauseOrResumeCallback}
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.onResume = function (f) {
+                if (this._currentAction) {
+                    this._currentAction.onResume(f);
+                }
+                return this;
+            };
+            /**
+             * Set action onApply callback.
+             * @method cc.action.ActionChainContext#onApply
+             * @param f {cc.action.ActionCallbackApplicationCallback}
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.onApply = function (f) {
+                if (this._currentAction) {
+                    this._currentAction.onApply(f);
+                }
+                return this;
+            };
+            /**
+             * If the current action is a sequence, set the Sequence as sequential or spawn.
+             * @method cc.action.ActionChainContext#setSequential
+             * @param b {boolean}
+             * @returns {cc.action.ActionChainContext}
+             */
+            ActionChainContext.prototype.setSequential = function (b) {
+                if (this._currentAction.setSequential) {
+                    this._currentAction.setSequential(b);
+                }
+                return this;
+            };
+            return ActionChainContext;
+        })();
+        _action.ActionChainContext = ActionChainContext;
+    })(action = cc.action || (cc.action = {}));
+})(cc || (cc = {}));
+
+/**
+ * License: see license.txt file
+ */
 var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -10788,7 +11714,6 @@ var cc;
         "use strict";
         var Node = cc.node.Node;
         var ActionManager = cc.action.ActionManager;
-        var SchedulerQueue = cc.action.SchedulerQueue;
         /**
          * @class cc.node.Scene
          * @extends cc.node.Node
@@ -10881,8 +11806,7 @@ var cc;
                 this._scheduler = null;
                 this._sceneGraphPriorityTree = null;
                 this._priorityTree = null;
-                this._scheduler = new SchedulerQueue();
-                this._actionManager.scheduleActionForNode(null, this._scheduler);
+                this._scheduler = this._actionManager.getScheduler();
                 this._sceneGraphPriorityTree = new cc.input.SceneGraphInputTreeNode(this);
                 this._priorityTree = [];
                 this.setGlobalAlpha(true);
@@ -10945,16 +11869,26 @@ var cc;
                 });
                 return this;
             };
-            Scene.prototype.findNodeAtScreenPoint = function (e) {
+            Scene.prototype.findNodeAtScreenPoint = function (p, callback) {
+                var pp = new cc.math.Vector();
+                pp.set(p.x, p.y);
                 for (var i = 0; i < this._priorityTree.length; i++) {
                     var node = this._priorityTree[i].node;
-                    e._localPoint.set(e._screenPoint.x, e._screenPoint.y);
-                    if (node.isScreenPointInNode(e._localPoint)) {
-                        return node;
+                    p.set(pp.x, pp.y);
+                    if (node.isScreenPointInNode(p)) {
+                        if (callback) {
+                            if (!callback(node)) {
+                                return node;
+                            }
+                        }
+                        else {
+                            return node;
+                        }
                     }
                 }
                 // now, for scene-graph priority.
-                return this._sceneGraphPriorityTree.findNodeAtScreenPoint(e);
+                p.set(pp.x, pp.y);
+                return this._sceneGraphPriorityTree.findNodeAtScreenPoint(p, callback);
             };
             /**
              * Increment scene's timeline.
@@ -11031,6 +11965,8 @@ var cc;
             };
             /**
              * Notifiy event registered callback.
+             *
+             *
              * @method cc.node.Scene#callOnEnter
              */
             Scene.prototype.callOnEnter = function () {
@@ -11044,11 +11980,6 @@ var cc;
                 }
                 this.resetScene();
             };
-            //__setTransform():Node {
-            //    this.__setLocalTransform();
-            //    this.__setWorldTransform();
-            //    return this;
-            //}
             /**
              * Notify event registered callback.
              * @method cc.node.Scene#callOnExit
@@ -11126,9 +12057,6 @@ var cc;
                 this._actionManager.stopNodeActionByTag(node, tag);
                 return this;
             };
-            Scene.prototype.startChainingActionsForNode = function (node) {
-                return this._actionManager.startChainingActionsForNode(node);
-            };
             Scene.prototype.stopActionsForNode = function (node) {
                 this._actionManager.stopActionsForNode(node);
             };
@@ -11137,11 +12065,6 @@ var cc;
             };
             Scene.prototype.getScene = function () {
                 return this;
-            };
-            Scene.prototype.__setLocalTransform = function () {
-                _super.prototype.__setLocalTransform.call(this);
-                //this._modelViewMatrix[4]*= -1;
-                //this._modelViewMatrix[5]+= this._contentSize.height;
             };
             /////////////// SCHEDULER METHODS BEGIN ////////////////
             Scene.prototype.scheduleTask = function (task) {
@@ -11306,7 +12229,7 @@ var cc;
          * <li>Every Director present in a Document, will share a common Texture and Image cache for better resource management.
          *
          * <li>A Director object runs Scenes. The process of switching scenes is handled using a <code>Transition</code> object.
-         * <li>The preferred way of buiding scenes is by calling <code>director.createScene() -> Scene</code>
+         * <li>The preferred way of building scenes is by calling <code>director.createScene() -> Scene</code>
          *
          * @see{cc.node.Scene}
          * @see{cc.node.Transition}
@@ -11392,7 +12315,9 @@ var cc;
                  * @private
                  */
                 this._inputManager = null;
+                this._scheduler = null;
                 this._scenesActionManager = new ActionManager();
+                this._scheduler = this._scenesActionManager.getScheduler();
                 this._inputManager = new cc.input.InputManager();
                 // BUGBUG deprecated
                 cc.director = this;
@@ -11435,7 +12360,7 @@ var cc;
                         if (sceneHint & 8 /* RIGHT */) {
                             x = preferredUnitsWidth - unitsWidth;
                         }
-                        if ((cc.render.RENDER_ORIGIN === "top" && sceneHint & 4 /* BOTTOM */) || (cc.render.RENDER_ORIGIN === "bottom" && sceneHint & 1 /* TOP */)) {
+                        if ((cc.render.RENDER_ORIGIN === cc.render.ORIGIN_TOP && sceneHint & 4 /* BOTTOM */) || (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM && sceneHint & 1 /* TOP */)) {
                             y = preferredUnitsHeight - unitsHeight;
                         }
                         me._currentScene.setContentSize(unitsWidth, unitsHeight);
@@ -11533,9 +12458,9 @@ var cc;
                 if (typeof transition !== "undefined") {
                     this._exitingScene = this._currentScene;
                     transition.initialize(scene, this._currentScene).onDirectorTransitionEnd(function (tr) {
-                        if (_this._exitingScene) {
-                            _this.__sceneExitedDirector(_this._exitingScene);
-                        }
+                        //if ( this._exitingScene ) {
+                        //    this.__sceneExitedDirector(this._exitingScene);
+                        //}
                         _this._exitingScene = null;
                     });
                 }
@@ -11726,6 +12651,51 @@ var cc;
             Director.prototype.getWinSize = function () {
                 return this._contentSize.clone();
             };
+            Director.prototype.scheduleTask = function (task) {
+                this._scheduler.scheduleTask(task);
+            };
+            /**
+             * Schedule a task for the node.
+             * This node will be passed as target to the specified callback function.
+             * If already exist a task in the scheduler for the same pair of node and callback, the task will be updated
+             * with the new data.
+             * @method cc.node.Node#schedule
+             * @param callback_fn {cc.action.SchedulerTaskCallback} callback to invoke
+             * @param interval {number} repeat interval time. the task will be fired every this amount of milliseconds.
+             * @param repeat {number=} number of repetitions. if not set, infinite will be used.
+             * @param delay {number=} wait this millis before firing the task.
+             */
+            Director.prototype.schedule = function (callback_fn, interval, repeat, delay) {
+                var task = cc.action.SchedulerQueue.createSchedulerTask(this, callback_fn, interval, repeat, delay);
+                this._scheduler.scheduleTask(task);
+            };
+            /**
+             * Schedule a single shot task. Will fired only once.
+             * @method cc.node.Node#scheduleOnce
+             * @param callback_fn {cc.action.SchedulerTaskCallback} scheduler callback.
+             * @param delay {number} milliseconds to wait before firing the task.
+             * @returns {cc.node.Node}
+             */
+            Director.prototype.scheduleOnce = function (callback_fn, delay) {
+                this.schedule(callback_fn, 0.0, 0, delay);
+            };
+            /**
+             * Unschedule a task for the node.
+             * @method cc.node.Node#unschedule
+             * @param callback_fn {cc.action.SchedulerTaskCallback} callback to unschedule.
+             */
+            Director.prototype.unschedule = function (callback_fn) {
+                if (!callback_fn)
+                    return;
+                this._scheduler.unscheduleCallbackForTarget(this, callback_fn);
+            };
+            /**
+             * Unschedule all tasks for the node.
+             * @method cc.node.Node#unscheduleAllCallbacks
+             */
+            Director.prototype.unscheduleAllCallbacks = function (target) {
+                this._scheduler.unscheduleAllCallbacks(target ? target : this);
+            };
             return Director;
         })(Node);
         node.Director = Director;
@@ -11863,7 +12833,7 @@ var cc;
                 this._glId = gl.createTexture();
                 webglstate.bindTexture(gl.TEXTURE_2D, this._glId);
                 webglstate.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-                if (cc.render.RENDER_ORIGIN === "bottom") {
+                if (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM) {
                     this._invertedY = true;
                     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
                 }
@@ -11926,7 +12896,7 @@ var cc;
                 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
             };
             Texture2D.prototype.generateMipmap = function () {
-                if (!this._webglState) {
+                if (!this._webglState || this._hasMipmaps) {
                     return;
                 }
                 var gl = this._webglState._gl;
@@ -11959,7 +12929,7 @@ var cc;
     var node;
     (function (node) {
         var sprite;
-        (function (_sprite) {
+        (function (sprite) {
             var Vector = cc.math.Vector;
             var Rectangle = cc.math.Rectangle;
             function __createSpriteFrame(from, x, y, w, h, name, rotated, offsetx, offsety) {
@@ -12178,7 +13148,7 @@ var cc;
                  * @private
                  */
                 SpriteFrame.prototype.__calculateNormalizedRect = function () {
-                    if (cc.render.RENDER_ORIGIN === "bottom") {
+                    if (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM) {
                         this._normalizedRect.set(this._rect.x, this._texture._imageHeight - this._rect.y - this._rect.h, this._rect.w, this._rect.h).normalizeBy(this._texture._textureWidth, this._texture._textureHeight);
                     }
                     else {
@@ -12198,18 +13168,21 @@ var cc;
                  * This method takes care of drawing the Frame with the correct rotation and Sprite's status of flip axis values.
                  * @method cc.node.sprite.SpriteFrame#draw
                  * @param ctx {cc.render.RenderingContext}
-                 * @param sprite {cc.node.Sprite}
+                 * @param w {number}
+                 * @param h {number}
                  */
-                SpriteFrame.prototype.draw = function (ctx, sprite) {
-                    var rotated = this._rotated;
-                    if (ctx.type === "webgl") {
+                SpriteFrame.prototype.draw = function (ctx, w, h) {
+                    if (ctx.type === cc.render.RENDERER_TYPE_WEBGL) {
                         if (!this._texture.isWebGLEnabled()) {
                             cc.Debug.warn(cc.locale.SPRITEFRAME_WARN_TEXTURE_NOT_WEBGL_INITIALIZED, "SpriteFrame.draw");
                             this._texture.__setAsGLTexture(ctx._webglState);
                             this.__calculateNormalizedRect();
                         }
+                        ctx.drawTexture(this._texture, this._rect.x, this._rect.y, this._rect.w, this._rect.h, 0, 0, w, h);
                     }
-                    ctx.drawTexture(this._texture, this._rect.x, this._rect.y, this._rect.w, this._rect.h, 0, 0, sprite.width, sprite.height);
+                    else {
+                        ctx.drawTextureUnsafe(this._texture, this._rect.x, this._rect.y, this._rect.w, this._rect.h, 0, 0, w, h);
+                    }
                 };
                 /**
                  * Create a set of new SpriteFrames from this SpriteFrame area, and defined by a JSON object.
@@ -12280,7 +13253,7 @@ var cc;
                 };
                 return SpriteFrame;
             })();
-            _sprite.SpriteFrame = SpriteFrame;
+            sprite.SpriteFrame = SpriteFrame;
         })(sprite = node.sprite || (node.sprite = {}));
     })(node = cc.node || (cc.node = {}));
 })(cc || (cc = {}));
@@ -12529,7 +13502,7 @@ var cc;
         var __m0 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
         /**
          * @class cc.node.Sprite
-         * @extends cc.node.Node
+         * @extend cc.node.Node
          * @classdesc
          * Sprite creates an sprite, a Node that shows images with animations.
          */
@@ -12538,6 +13511,7 @@ var cc;
             /**
              * @method cc.node.Sprite#constructor
              * @param ddata {cc.node.SpriteInitializer}
+             * @param rect {cc.math.Rectangle}
              */
             function Sprite(ddata, rect) {
                 _super.call(this);
@@ -12655,13 +13629,9 @@ var cc;
              */
             Sprite.prototype.draw = function (ctx) {
                 if (this._spriteFrame) {
-                    ctx.globalAlpha = this._frameAlpha;
+                    ctx.setGlobalAlpha(this._frameAlpha);
                     ctx.setTintColor(this._color);
-                    //if ( ctx.type==="canvas" && cc.render.RENDER_ORIGIN==="bottom" ) {
-                    //    ctx.translate( 0, this._contentSize.height );
-                    //    ctx.scale( 1, -1 );
-                    //}
-                    this._spriteFrame.draw(ctx, this);
+                    this._spriteFrame.draw(ctx, this.width, this.height);
                 }
             };
             /**
@@ -12678,39 +13648,107 @@ var cc;
                     this._spriteMatrixDirty = true;
                 }
             };
+            /**
+             *
+             *           cc.math.Matrix3.identity( this._spriteMatrix );
+    
+                         if (this._flippedX && this._flippedY) {
+                             cc.math.Matrix3.translateBy(this._spriteMatrix, w, h);
+                             cc.math.Matrix3.scaleBy(this._spriteMatrix, -1, -1);
+                             this._spriteMatrixSet= true;
+                         } else if (this._flippedX) {
+                             cc.math.Matrix3.translateBy(this._spriteMatrix, w, 0);
+                             cc.math.Matrix3.scaleBy(this._spriteMatrix, -1, 1);
+                             this._spriteMatrixSet= true;
+                         } else if (this._flippedY) {
+                             cc.math.Matrix3.translateBy(this._spriteMatrix, 0, h);
+                             cc.math.Matrix3.scaleBy(this._spriteMatrix, 1, -1);
+                             this._spriteMatrixSet= true;
+                         }
+    
+                         if ( this._spriteFrame.needsSpecialMatrix() ) {
+                             cc.math.Matrix3.translateBy(this._spriteMatrix,
+                                 this._spriteFrame._offsetFromCenter.x,
+                                 this._spriteFrame._offsetFromCenter.y);
+    
+                             if (this._spriteFrame._rotated) {
+                                 cc.math.Matrix3.translateBy(this._spriteMatrix, w / 2, h / 2);
+                                 cc.math.Matrix3.rotateBy(this._spriteMatrix, Math.PI / 2);
+                                 cc.math.Matrix3.translateBy(this._spriteMatrix, -w / 2, -h / 2);
+                             }
+    
+                             this._spriteMatrixSet = true;
+                         }
+    
+             *
+             * @private
+             */
             Sprite.prototype.__createMatrix = function () {
                 var w = this.width;
                 var h = this.height;
                 this._spriteMatrixSet = false;
-                cc.math.Matrix3.identity(this._spriteMatrix);
+                var mat = this._spriteMatrix;
                 if (this._flippedX && this._flippedY) {
-                    cc.math.Matrix3.translateBy(this._spriteMatrix, w, h);
-                    cc.math.Matrix3.scaleBy(this._spriteMatrix, -1, -1);
+                    cc.math.Matrix3.set(mat, -1.0, 0.0, 0.0, -1.0, w, h);
                     this._spriteMatrixSet = true;
                 }
                 else if (this._flippedX) {
-                    cc.math.Matrix3.translateBy(this._spriteMatrix, w, 0);
-                    cc.math.Matrix3.scaleBy(this._spriteMatrix, -1, 1);
+                    cc.math.Matrix3.set(mat, -1.0, 0.0, 0.0, 1.0, w, 0.0);
                     this._spriteMatrixSet = true;
                 }
                 else if (this._flippedY) {
-                    cc.math.Matrix3.translateBy(this._spriteMatrix, 0, h);
-                    cc.math.Matrix3.scaleBy(this._spriteMatrix, 1, -1);
+                    cc.math.Matrix3.set(mat, 1.0, 0.0, 0.0, -1.0, 0.0, h);
                     this._spriteMatrixSet = true;
                 }
-                if (this._spriteFrame.needsSpecialMatrix()) {
-                    cc.math.Matrix3.translateBy(this._spriteMatrix, this._spriteFrame._offsetFromCenter.x, this._spriteFrame._offsetFromCenter.y);
-                    if (this._spriteFrame._rotated) {
-                        cc.math.Matrix3.translateBy(this._spriteMatrix, w / 2, h / 2);
-                        cc.math.Matrix3.rotateBy(this._spriteMatrix, Math.PI / 2);
-                        cc.math.Matrix3.translateBy(this._spriteMatrix, -w / 2, -h / 2);
+                else {
+                    cc.math.Matrix3.identity(mat);
+                }
+                var sf = this._spriteFrame;
+                if (sf.needsSpecialMatrix()) {
+                    mat[2] += mat[0] * sf._offsetFromCenter.x;
+                    mat[5] += mat[4] * sf._offsetFromCenter.y;
+                    if (sf._rotated) {
+                        mat[2] += mat[0] * w / 2.0;
+                        mat[5] += mat[4] * h / 2.0;
+                        var t = mat[0];
+                        mat[0] = mat[1];
+                        mat[1] = -t;
+                        t = mat[3];
+                        mat[3] = mat[4];
+                        mat[4] = -t;
+                        cc.math.Matrix3.translateBy(mat, -w / 2.0, -h / 2.0);
                     }
                     this._spriteMatrixSet = true;
                 }
                 this._spriteMatrixDirty = false;
             };
             Sprite.prototype.__setLocalTransform = function () {
-                _super.prototype.__setLocalTransform.call(this);
+                //super.__setLocalTransform();
+                if (this._rotation.x !== this.rotationAngle || (this.rotationAngle % 360) !== 0 || this.__isFlagSet(4 /* REQUEST_TRANSFORM */)) {
+                    this.__setLocalTransformRotate();
+                }
+                else if (this.scaleX !== this._scale.x || this._scale.y !== this.scaleY || this._scale.x !== 1 || this._scale.y !== 1) {
+                    this.__setLocalTransformScale();
+                }
+                else if (this.x !== this._position.x || this.y !== this._position.y) {
+                    var mm = this._modelViewMatrix;
+                    var pa = this._positionAnchor;
+                    var cs = this._contentSize;
+                    var x = this.x - pa.x * cs.width;
+                    var y = this.y - pa.y * cs.height;
+                    mm[2] = x;
+                    mm[5] = y;
+                    mm[0] = 1.0;
+                    mm[1] = 0.0;
+                    mm[3] = 0.0;
+                    mm[4] = 1.0;
+                    mm[6] = 0.0;
+                    mm[7] = 0.0;
+                    mm[8] = 1.0;
+                    this._position.x = this.x;
+                    this._position.y = this.y;
+                    this.__setFlag(2 /* TRANSFORMATION_DIRTY */);
+                }
                 if (this.__isFlagSet(2 /* TRANSFORMATION_DIRTY */)) {
                     if (this._spriteMatrixDirty) {
                         this.__createMatrix();
@@ -12832,9 +13870,9 @@ var cc;
                     return;
                 }
                 if (this._spriteFrame) {
-                    ctx.globalAlpha = this._frameAlpha;
-                    ctx.setTintColor(this._color);
-                    if (ctx.type === "webgl") {
+                    //ctx.globalAlpha = this._frameAlpha;
+                    //ctx.setTintColor(this._color);
+                    if (ctx.type === cc.render.RENDERER_TYPE_WEBGL) {
                         ctx.batchGeometryWithSpriteFast(this);
                     }
                     else {
@@ -12952,9 +13990,9 @@ var cc;
             Button.prototype.draw = function (ctx) {
                 var sf = this.__getCurrentFrame();
                 if (sf) {
-                    ctx.globalAlpha = this._frameAlpha;
+                    ctx.setGlobalAlpha(this._frameAlpha);
                     ctx.setTintColor(this._color);
-                    sf.draw(ctx, this);
+                    sf.draw(ctx, this.width, this.height);
                 }
             };
             Button.prototype.init = function (obj) {
@@ -13608,7 +14646,7 @@ var cc;
                     size.width += this._shadowBlur + this._shadowOffsetX;
                     size.height += this._shadowBlur + this._shadowOffsetY;
                     offsetX += this._shadowBlur / 2 + this._shadowOffsetX;
-                    offsetY += this._shadowBlur / 2 + this._shadowOffsetY * (cc.render.RENDER_ORIGIN === "bottom" ? -1 : 1);
+                    offsetY += this._shadowBlur / 2 + this._shadowOffsetY * (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM ? -1 : 1);
                 }
                 var canvas = document.createElement("canvas");
                 canvas.width = size.width;
@@ -14214,7 +15252,7 @@ var cc;
                         break;
                 }
                 sceneIn.resetScene().setPosition(_inX, _inY);
-                actionIn = new MoveAction({ x0: 0, y0: 0, x1: -_inX, y1: -_inY, relative: true }).setDuration(this._duration);
+                actionIn = new MoveAction({ from: { x: 0, y: 0 }, to: { x: -_inX, y: -_inY }, relative: true }).setDuration(this._duration);
                 if (this._interpolator) {
                     actionIn.setInterpolator(this._interpolator);
                 }
@@ -14866,9 +15904,9 @@ var cc;
                 SolidColorShader.prototype.flushBuffersWithContent = function (rcs) {
                     this.__updateUniformValues();
                     var gl = this._webglState;
-                    gl.vertexAttribPointer(this._attributePosition._location, 2, gl._gl.FLOAT, false, 8 * 4, 0);
-                    gl.vertexAttribPointer(this._attributeColor._location, 4, gl._gl.FLOAT, false, 8 * 4, 2 * 4);
-                    //            gl.vertexAttribPointer(this._attributeTexture._location, 2, gl.FLOAT, false, 8*4, 6*4 );
+                    gl.vertexAttribPointer(this._attributePosition._location, 2, gl._gl.FLOAT, false, 12, 0);
+                    gl.vertexAttribPointer(this._attributeColor._location, 4, gl._gl.UNSIGNED_BYTE, true, 12, 2 * 4);
+                    //gl.vertexAttribPointer(this._attributeColor._location, 4, gl._gl.FLOAT, false, 8*4, 2*4);
                 };
                 /**
                  * Spare matrix
@@ -14904,6 +15942,7 @@ var cc;
             var AbstractShader = cc.render.shader.AbstractShader;
             /**
              * @class cc.render.shader.TextureShader
+             * @extends AbstractShader
              * @classdesc
              *
              * This shader fills rects with an image. It is expected to be invoked by calls to drawImage.
@@ -14981,9 +16020,9 @@ var cc;
                 TextureShader.prototype.flushBuffersWithContent = function (rcs) {
                     this.__updateUniformValues();
                     var gl = this._webglState;
-                    gl.vertexAttribPointer(this._attributePosition._location, 2, gl._gl.FLOAT, false, 8 * 4, 0);
-                    gl.vertexAttribPointer(this._attributeColor._location, 4, gl._gl.FLOAT, false, 8 * 4, 2 * 4);
-                    gl.vertexAttribPointer(this._attributeTexture._location, 2, gl._gl.FLOAT, false, 8 * 4, 6 * 4);
+                    gl.vertexAttribPointer(this._attributePosition._location, 2, gl._gl.FLOAT, false, 5 * 4, 0);
+                    gl.vertexAttribPointer(this._attributeColor._location, 4, gl._gl.UNSIGNED_BYTE, true, 5 * 4, 2 * 4);
+                    gl.vertexAttribPointer(this._attributeTexture._location, 2, gl._gl.FLOAT, false, 5 * 4, 3 * 4);
                 };
                 /**
                  * Spare matrix
@@ -15149,20 +16188,13 @@ var cc;
                 function FastTextureShader(gl) {
                     _super.call(this, gl, {
                         vertexShader: "" + "precision lowp float; \n" + "attribute vec2 aPosition; \n" + "attribute vec4 aColor; \n" + "attribute vec2 aTexture; \n" + "attribute vec2 aAnchorPosition; \n" + "attribute float aRotation; \n" + "attribute vec2 aScale; \n" + "uniform mat4 uProjection; \n" + "varying vec2 vTextureCoord; \n" + "varying vec4 vAttrColor; \n" + "void main(void) { \n" + "vec2 v;\n" + "vec2 sv = aAnchorPosition * aScale; \n" + "float _rotation= aRotation * 0.017453292519943295;\n" + " v.x = sv.x * cos(_rotation) - sv.y * sin(_rotation); \n" + " v.y = sv.x * sin(_rotation) + sv.y * cos(_rotation); \n" + "gl_Position = uProjection * vec4( v + aPosition, 0.0, 1.0 );\n" + "vTextureCoord = aTexture;\n" + "vAttrColor = aColor;\n" + "}\n",
-                        fragmentShader: "" + "precision lowp float; \n" + "varying vec2 vTextureCoord; \n" + "uniform sampler2D uTextureSampler; \n" + "varying vec4 vAttrColor;\n" + "void main(void) { \n" + "  gl_FragColor = texture2D(uTextureSampler, vec2(vTextureCoord)) * vAttrColor; \n" + "}\n",
+                        fragmentShader: "" + "precision lowp float; \n" + "varying vec2 vTextureCoord; \n" + "uniform sampler2D uTextureSampler; \n" + "varying vec4 vAttrColor;\n" + "void main(void) { \n" + "  gl_FragColor = texture2D(uTextureSampler,vTextureCoord) * vAttrColor; \n" + "}\n",
                         attributes: ["aPosition", "aColor", "aTexture", "aAnchorPosition", "aRotation", "aScale"],
                         uniforms: {
                             "uProjection": {
                                 type: "m4v",
                                 value: [1.0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 1.0]
                             },
-                            //"uTransform": {
-                            //    type: "m4v",
-                            //    value: [1.0, 0, 0, 0,
-                            //            0, 1.0, 0, 0,
-                            //            0, 0, 1.0, 0,
-                            //            0, 0, 0, 1.0 ]
-                            //},
                             "uTextureSampler": {
                                 type: "t",
                                 value: null
@@ -15209,7 +16241,6 @@ var cc;
                     this._attributeScale = null;
                     this._uniformTextureSampler = this.findUniform("uTextureSampler");
                     this._uniformProjection = this.findUniform("uProjection");
-                    //this._uniformTransform = this.findUniform("uTransform");
                     this._attributePosition = this.findAttribute("aPosition");
                     this._attributeColor = this.findAttribute("aColor");
                     this._attributeTexture = this.findAttribute("aTexture");
@@ -15258,15 +16289,17 @@ var cc;
                 console.log("Buffers: in bufferData mode with whole buffer.");
             })();
             var Buffer = (function () {
-                function Buffer(_gl, _type, initialValue) {
+                function Buffer(_gl, _type, initialValue, usage) {
                     this._gl = _gl;
                     this._type = _type;
                     this._buffer = null;
                     this._prevValue = null;
+                    this._usage = usage;
+                    //this._usage= _gl.STATIC_DRAW;
                     this._buffer = _gl.createBuffer();
                     if (initialValue) {
                         this._gl.bindBuffer(_type, this._buffer);
-                        this._gl.bufferData(_type, initialValue, _gl.STREAM_DRAW);
+                        this._gl.bufferData(_type, initialValue, usage);
                     }
                 }
                 /**
@@ -15277,15 +16310,15 @@ var cc;
                 Buffer.prototype.enableWithValue = function (v) {
                     this._gl.bindBuffer(this._type, this._buffer);
                     //if ( this._prevValue!==v ) {
-                    this._gl.bufferData(this._type, v, this._gl.STREAM_DRAW);
-                    //this._gl.bufferSubData( this._type, 0, v );
+                    //    this._gl.bufferData( this._type, v, this._usage );
+                    this._gl.bufferSubData(this._type, 0, v);
                     //this._prevValue= v;
                     //}
                 };
                 Buffer.prototype.forceEnableWithValue = function (v) {
                     this._gl.bindBuffer(this._type, this._buffer);
-                    this._gl.bufferData(this._type, v, this._gl.STREAM_DRAW);
-                    //this._gl.bufferSubData( this._type, 0, v );
+                    //this._gl.bufferData( this._type, v, this._usage );
+                    this._gl.bufferSubData(this._type, 0, v);
                 };
                 return Buffer;
             })();
@@ -15318,6 +16351,8 @@ var cc;
     var render;
     (function (render) {
         "use strict";
+        render.ORIGIN_BOTTOM = 1;
+        render.ORIGIN_TOP = 0;
         /**
          * This flag sets renderer's y axis origin to be on top or bottom (y axis increases up or downwards.
          * <p>
@@ -15336,7 +16371,7 @@ var cc;
          *     There could be some solutions to avoid this extra transformation call though:
          *     <li>Invert all your images at compile time. Images are already flipped vertically before loading.
          *     <li>Invert all your images at load time. Extra memory, and extra bootstrapping time.
-         *     <li>Change the y axis orientation to "top", and avoid the extra call. This will work for both canvas and
+         *     <li>Change the y axis orientation to cc.render.ORIGIN_BOTTOM, and avoid the extra call. This will work for both canvas and
          *         webgl rendering.
          * <p>
          *     In either case, right now, the system DOES apply the extra transformation, and the performance penalty is
@@ -15346,9 +16381,9 @@ var cc;
          *     either at the top or the bottom of the node itself.
          *
          * @member cc.render.RENDER_ORIGIN
-         * @type {string}
+         * @type {number}
          */
-        render.RENDER_ORIGIN = "bottom";
+        render.RENDER_ORIGIN = cc.render.ORIGIN_BOTTOM;
         function autodetectRenderer(w, h, elem) {
             w = w || 800;
             h = h || 600;
@@ -15628,7 +16663,7 @@ var cc;
                 this._dimension.height = h;
             };
             Renderer.prototype.getType = function () {
-                return "";
+                return cc.render.RENDERER_TYPE_CANVAS;
             };
             return Renderer;
         })();
@@ -15636,16 +16671,19 @@ var cc;
         function dc2d(renderer) {
             var canvas = renderer._surface;
             var c2d = canvas.getContext("2d");
+            var globalAlpha = 1;
+            var globalCompositeOperation = 0 /* source_over */;
             c2d.flush = function () {
                 this.setTransform(1, 0, 0, 1, 0, 0);
             };
-            Object.defineProperty(c2d, "type", {
-                get: function () {
-                    return "canvas";
-                },
-                enumerable: true,
-                configurable: true
-            });
+            c2d.type = cc.render.RENDERER_TYPE_CANVAS;
+            //Object.defineProperty(c2d, "type", {
+            //    get: function () {
+            //        return cc.render.RENDERER_TYPE_CANVAS;
+            //    },
+            //    enumerable: true,
+            //    configurable: true
+            //});
             c2d.setFillStyleColor = function (color) {
                 this.fillStyle = color.getFillStyle();
             };
@@ -15674,52 +16712,113 @@ var cc;
                 return this.canvas.height;
             };
             c2d.setCompositeOperation = function (o) {
+                if (o === globalCompositeOperation) {
+                    return;
+                }
+                globalCompositeOperation = o;
                 this.globalCompositeOperation = cc.render.CompositeOperationToCanvas[o];
             };
             c2d.getCompositeOperation = function () {
-                return cc.render.CanvasToComposite[this.globalCompositeOperation];
+                return globalCompositeOperation;
             };
+            c2d.setGlobalAlpha = function (alpha) {
+                if (alpha === globalAlpha) {
+                    return;
+                }
+                globalAlpha = alpha;
+                this.globalAlpha = alpha;
+            };
+            c2d.getGlobalAlpha = function () {
+                return globalAlpha;
+            };
+            /**
+             * this.transform(1,0,0,-1,0,h);
+               //this.translate(0, h);
+               //this.scale(1, -1);
+               this.drawImage(texture._image, sx, sy, sw, sh, dx, 0, dw, dh);
+               //this.scale(1, -1);
+               //this.translate(0, -h);
+               this.transform(1,0,0,-1,0,-h);
+    
+             * @param texture
+             * @param sx
+             * @param sy
+             * @param sw
+             * @param sh
+             * @param dx
+             * @param dy
+             * @param dw
+             * @param dh
+             */
             c2d.drawTexture = function (texture, sx, sy, sw, sh, dx, dy, dw, dh) {
                 "use strict";
                 var h;
                 if (arguments.length === 3) {
-                    if (cc.render.RENDER_ORIGIN === "bottom") {
-                        h = sy + texture._image.height;
-                        this.translate(0, h);
-                        this.scale(1, -1);
+                    if (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM) {
+                        h = texture._image.height + sy;
+                        this.transform(1, 0, 0, -1, 0, h);
                         this.drawImage(texture._image, sx, 0);
-                        this.scale(1, -1);
-                        this.translate(0, -h);
+                        this.transform(1, 0, 0, -1, 0, h);
                     }
                     else {
                         this.drawImage(texture._image, sx, sy);
                     }
                 }
                 else if (arguments.length === 5) {
-                    if (cc.render.RENDER_ORIGIN === "bottom") {
-                        h = sy + sh;
-                        this.translate(0, h);
-                        this.scale(1, -1);
+                    if (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM) {
+                        this.transform(1, 0, 0, -1, 0, sh + sy);
                         this.drawImage(texture._image, sx, 0, sw, sh);
-                        this.scale(1, -1);
-                        this.translate(0, -h);
+                        this.transform(1, 0, 0, -1, 0, sh + sy);
                     }
                     else {
                         this.drawImage(texture._image, sx, sy, sw, sh);
                     }
                 }
                 else {
-                    if (cc.render.RENDER_ORIGIN === "bottom") {
-                        h = dy + dh;
-                        this.translate(0, h);
-                        this.scale(1, -1);
+                    if (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM) {
+                        this.transform(1, 0, 0, -1, 0, dy + dh);
                         this.drawImage(texture._image, sx, sy, sw, sh, dx, 0, dw, dh);
-                        this.scale(1, -1);
-                        this.translate(0, -h);
+                        this.transform(1, 0, 0, -1, 0, dy + dh);
                     }
                     else {
                         this.drawImage(texture._image, sx, sy, sw, sh, dx, dy, dw, dh);
                     }
+                }
+            };
+            /**
+             * draw a texture, but not preserving transformation homogeneity.
+             * For most cases will work, but not for custom drawing nodes.
+             * This method is used in Sprite, where you only want to draw the associated SpriteFrame.
+             *
+             * @param texture
+             * @param sx
+             * @param sy
+             * @param sw
+             * @param sh
+             * @param dx
+             * @param dy
+             * @param dw
+             * @param dh
+             */
+            c2d.drawTextureUnsafe = function (texture, sx, sy, sw, sh, dx, dy, dw, dh) {
+                "use strict";
+                if (arguments.length === 3) {
+                    if (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM) {
+                        this.transform(1, 0, 0, -1, 0, texture._image.height);
+                    }
+                    this.drawImage(texture._image, sx, sy);
+                }
+                else if (arguments.length === 5) {
+                    if (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM) {
+                        this.transform(1, 0, 0, -1, 0, sh);
+                    }
+                    this.drawImage(texture._image, sx, sy, sw, sh);
+                }
+                else {
+                    if (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM) {
+                        this.transform(1, 0, 0, -1, 0, dh);
+                    }
+                    this.drawImage(texture._image, sx, sy, sw, sh, dx, dy, dw, dh);
                 }
             };
             return c2d;
@@ -15776,7 +16875,7 @@ var cc;
                 this._renderingContext = dc2d(this);
             };
             CanvasRenderer.prototype.getType = function () {
-                return "canvas";
+                return cc.render.RENDERER_TYPE_CANVAS;
             };
             return CanvasRenderer;
         })(Renderer);
@@ -15846,7 +16945,7 @@ var cc;
                 this._webglState = this._renderingContext._webglState;
             };
             WebGLRenderer.prototype.getType = function () {
-                return "webgl";
+                return cc.render.RENDERER_TYPE_WEBGL;
             };
             return WebGLRenderer;
         })(Renderer);
@@ -15893,9 +16992,9 @@ var cc;
                 var spriteMiddleWidth = sf.getWidth() - paddingW;
                 var spriteLeftWidth = patchData.left;
                 var scaleFactor = ctx.getUnitsFactor();
-                var topy = cc.render.RENDER_ORIGIN === "top" ? y : y + h - spriteTopHeight / scaleFactor;
-                var bottomy = cc.render.RENDER_ORIGIN === "top" ? y + h - spriteBottomHeight / scaleFactor : y;
-                var middley = cc.render.RENDER_ORIGIN === "top" ? y + spriteTopHeight / scaleFactor : y + spriteBottomHeight / scaleFactor;
+                var topy = cc.render.RENDER_ORIGIN === cc.render.ORIGIN_TOP ? y : y + h - spriteTopHeight / scaleFactor;
+                var bottomy = cc.render.RENDER_ORIGIN === cc.render.ORIGIN_TOP ? y + h - spriteBottomHeight / scaleFactor : y;
+                var middley = cc.render.RENDER_ORIGIN === cc.render.ORIGIN_TOP ? y + spriteTopHeight / scaleFactor : y + spriteBottomHeight / scaleFactor;
                 if (patchData.left) {
                     // top left
                     if (patchData.top) {
@@ -15942,6 +17041,8 @@ var cc;
     var render;
     (function (render) {
         "use strict";
+        render.RENDERER_TYPE_CANVAS = 1;
+        render.RENDERER_TYPE_WEBGL = 0;
         /**
          * @class cc.render.Pattern
          * @classdesc
@@ -16281,7 +17382,7 @@ var cc;
                  */
                 this._gl = null;
                 this._gl = glstate._gl;
-                this._dataArrayBuffer = new ArrayBuffer(GeometryBatcher.MAX_QUADS * 40);
+                this._dataArrayBuffer = new ArrayBuffer(GeometryBatcher.MAX_QUADS * 40 * 4);
                 this._dataBufferFloat = new Float32Array(this._dataArrayBuffer); // 40 is fastshader vertex size.
                 this._dataBufferByte = new Uint8Array(this._dataArrayBuffer);
                 this._dataBufferUint = new Uint32Array(this._dataArrayBuffer);
@@ -16300,30 +17401,26 @@ var cc;
                     indexBufferIndex += 6;
                     elementIndex += 4;
                 }
-                this._glDataBuffers.push(new Buffer(this._gl, this._gl.ARRAY_BUFFER, this._dataBufferFloat));
-                this._glDataBuffers.push(new Buffer(this._gl, this._gl.ARRAY_BUFFER, this._dataBufferFloat));
-                this._glDataBuffers.push(new Buffer(this._gl, this._gl.ARRAY_BUFFER, this._dataBufferFloat));
-                this._glDataBuffers.push(new Buffer(this._gl, this._gl.ARRAY_BUFFER, this._dataBufferFloat));
-                this._glIndexBuffers.push(new Buffer(this._gl, this._gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer));
-                this._glIndexBuffers.push(new Buffer(this._gl, this._gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer));
-                this._glIndexBuffers.push(new Buffer(this._gl, this._gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer));
-                this._glIndexBuffers.push(new Buffer(this._gl, this._gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer));
+                this._glDataBuffers.push(new Buffer(this._gl, this._gl.ARRAY_BUFFER, this._dataBufferFloat, this._gl.DYNAMIC_DRAW));
+                this._glDataBuffers.push(new Buffer(this._gl, this._gl.ARRAY_BUFFER, this._dataBufferFloat, this._gl.DYNAMIC_DRAW));
+                this._glDataBuffers.push(new Buffer(this._gl, this._gl.ARRAY_BUFFER, this._dataBufferFloat, this._gl.DYNAMIC_DRAW));
+                this._glDataBuffers.push(new Buffer(this._gl, this._gl.ARRAY_BUFFER, this._dataBufferFloat, this._gl.DYNAMIC_DRAW));
+                this._glIndexBuffers.push(new Buffer(this._gl, this._gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer, this._gl.STATIC_DRAW));
+                this._glIndexBuffers.push(new Buffer(this._gl, this._gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer, this._gl.STATIC_DRAW));
+                this._glIndexBuffers.push(new Buffer(this._gl, this._gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer, this._gl.STATIC_DRAW));
+                this._glIndexBuffers.push(new Buffer(this._gl, this._gl.ELEMENT_ARRAY_BUFFER, this._indexBuffer, this._gl.STATIC_DRAW));
                 this._glDataBuffer = this._glDataBuffers[0];
                 this._glIndexBuffer = this._glIndexBuffers[0];
             }
             GeometryBatcher.prototype.batchRectGeometryWithTexture = function (vertices, u0, v0, u1, v1, rcs) {
-                var tint = rcs._tintColor;
-                var r = tint[0];
-                var g = tint[1];
-                var b = tint[2];
-                var a = tint[3] * rcs._globalAlpha;
-                this.batchVertex(vertices[0], r, g, b, a, u0, v0);
-                this.batchVertex(vertices[1], r, g, b, a, u1, v0);
-                this.batchVertex(vertices[2], r, g, b, a, u1, v1);
-                this.batchVertex(vertices[3], r, g, b, a, u0, v1);
+                var cc = this.__uintColor(rcs);
+                this.batchVertex(vertices[0], cc, u0, v0);
+                this.batchVertex(vertices[1], cc, u1, v0);
+                this.batchVertex(vertices[2], cc, u1, v1);
+                this.batchVertex(vertices[3], cc, u0, v1);
                 // add two triangles * 3 values each.
                 this._indexBufferIndex += 6;
-                return this._dataBufferIndex + 32 >= this._dataBufferFloat.length;
+                return this._indexBufferIndex + 6 >= this._indexBuffer.length;
             };
             /**
              * Batch a rectangle with texture info and tint color.
@@ -16340,27 +17437,23 @@ var cc;
              * @param v1 {number}
              */
             GeometryBatcher.prototype.batchRectWithTexture = function (x, y, w, h, rcs, u0, v0, u1, v1) {
-                var tint = rcs._tintColor;
-                var r = tint[0];
-                var g = tint[1];
-                var b = tint[2];
-                var a = tint[3] * rcs._globalAlpha;
                 var cm = rcs._currentMatrix;
+                var cc = this.__uintColor(rcs);
                 __vv.x = x;
                 __vv.y = y;
-                this.batchVertex(Matrix3.transformPoint(cm, __vv), r, g, b, a, u0, v0);
+                this.batchVertex(Matrix3.transformPoint(cm, __vv), cc, u0, v0);
                 __vv.x = x + w;
                 __vv.y = y;
-                this.batchVertex(Matrix3.transformPoint(cm, __vv), r, g, b, a, u1, v0);
+                this.batchVertex(Matrix3.transformPoint(cm, __vv), cc, u1, v0);
                 __vv.x = x + w;
                 __vv.y = y + h;
-                this.batchVertex(Matrix3.transformPoint(cm, __vv), r, g, b, a, u1, v1);
+                this.batchVertex(Matrix3.transformPoint(cm, __vv), cc, u1, v1);
                 __vv.x = x;
                 __vv.y = y + h;
-                this.batchVertex(Matrix3.transformPoint(cm, __vv), r, g, b, a, u0, v1);
+                this.batchVertex(Matrix3.transformPoint(cm, __vv), cc, u0, v1);
                 // add two triangles * 3 values each.
                 this._indexBufferIndex += 6;
-                return this._dataBufferIndex + 32 >= this._dataBufferFloat.length;
+                return this._indexBufferIndex + 6 >= this._indexBuffer.length;
             };
             /**
              * Batch a rect with the current rendering info. The rect color will be tinted. Resulting transparency value will
@@ -16375,26 +17468,39 @@ var cc;
             GeometryBatcher.prototype.batchRect = function (x, y, w, h, rcs) {
                 var color = rcs._fillStyleColor;
                 var tint = rcs._tintColor;
-                var r = color[0] * tint[0];
-                var g = color[1] * tint[1];
-                var b = color[2] * tint[2];
-                var a = color[3] * tint[3] * rcs._globalAlpha;
+                var r = ((color[0] * tint[0]) * 255) | 0;
+                var g = ((color[1] * tint[1]) * 255) | 0;
+                var b = ((color[2] * tint[2]) * 255) | 0;
+                var a = ((color[3] * tint[3] * rcs._globalAlpha) * 255) | 0;
+                var cc = (r) | (g << 8) | (b << 16) | (a << 24);
                 var cm = rcs._currentMatrix;
                 __vv.x = x;
                 __vv.y = y;
-                this.batchVertex(Matrix3.transformPoint(cm, __vv), r, g, b, a, 0, 0);
+                Matrix3.transformPoint(cm, __vv);
+                this._dataBufferFloat[this._dataBufferIndex++] = __vv.x;
+                this._dataBufferFloat[this._dataBufferIndex++] = __vv.y;
+                this._dataBufferUint[this._dataBufferIndex++] = cc;
                 __vv.x = x + w;
                 __vv.y = y;
-                this.batchVertex(Matrix3.transformPoint(cm, __vv), r, g, b, a, 0, 0);
+                Matrix3.transformPoint(cm, __vv);
+                this._dataBufferFloat[this._dataBufferIndex++] = __vv.x;
+                this._dataBufferFloat[this._dataBufferIndex++] = __vv.y;
+                this._dataBufferUint[this._dataBufferIndex++] = cc;
                 __vv.x = x + w;
                 __vv.y = y + h;
-                this.batchVertex(Matrix3.transformPoint(cm, __vv), r, g, b, a, 0, 0);
+                Matrix3.transformPoint(cm, __vv);
+                this._dataBufferFloat[this._dataBufferIndex++] = __vv.x;
+                this._dataBufferFloat[this._dataBufferIndex++] = __vv.y;
+                this._dataBufferUint[this._dataBufferIndex++] = cc;
                 __vv.x = x;
                 __vv.y = y + h;
-                this.batchVertex(Matrix3.transformPoint(cm, __vv), r, g, b, a, 0, 0);
+                Matrix3.transformPoint(cm, __vv);
+                this._dataBufferFloat[this._dataBufferIndex++] = __vv.x;
+                this._dataBufferFloat[this._dataBufferIndex++] = __vv.y;
+                this._dataBufferUint[this._dataBufferIndex++] = cc;
                 // add two triangles * 3 values each.
                 this._indexBufferIndex += 6;
-                return this._dataBufferIndex + 32 >= this._dataBufferFloat.length;
+                return this._indexBufferIndex + 6 >= this._indexBuffer.length;
             };
             /**
              * Batch a vertex with color and texture.
@@ -16407,13 +17513,10 @@ var cc;
              * @param u {number}
              * @param v {number}
              */
-            GeometryBatcher.prototype.batchVertex = function (p, r, g, b, a, u, v) {
+            GeometryBatcher.prototype.batchVertex = function (p, cc, u, v) {
                 this._dataBufferFloat[this._dataBufferIndex++] = p.x;
                 this._dataBufferFloat[this._dataBufferIndex++] = p.y;
-                this._dataBufferFloat[this._dataBufferIndex++] = r;
-                this._dataBufferFloat[this._dataBufferIndex++] = g;
-                this._dataBufferFloat[this._dataBufferIndex++] = b;
-                this._dataBufferFloat[this._dataBufferIndex++] = a;
+                this._dataBufferUint[this._dataBufferIndex++] = cc;
                 this._dataBufferFloat[this._dataBufferIndex++] = u;
                 this._dataBufferFloat[this._dataBufferIndex++] = v;
             };
@@ -16429,10 +17532,12 @@ var cc;
                 }
                 // simply rebind the buffer, not modify its contents.
                 this._gl.bindBuffer(this._gl.ELEMENT_ARRAY_BUFFER, this._glIndexBuffer._buffer);
-                this._glDataBuffer.forceEnableWithValue(this._dataBufferFloat);
+                //this._glDataBuffer.forceEnableWithValue(this._dataBufferFloat);
+                this._glDataBuffer.forceEnableWithValue(this._dataBufferFloat.subarray(0, this._dataBufferIndex));
                 //this._glDataBuffer.enableWithValue(this._dataBufferFloat.subarray(0, this._dataBufferIndex));
                 shader.flushBuffersWithContent(rcs);
                 this._gl.drawElements(this._gl.TRIANGLES, this._indexBufferIndex, this._gl.UNSIGNED_SHORT, 0);
+                //this._gl.drawArrays(this._gl.TRIANGLE_STRIP, 0, 4);
                 // reset buffer data index.
                 this._dataBufferIndex = 0;
                 this._indexBufferIndex = 0;
@@ -16454,16 +17559,21 @@ var cc;
                 var db = this._dataBufferFloat;
                 var dbuint = this._dataBufferUint;
                 var dbi = this._dataBufferIndex;
-                var w0 = (sprite._contentSize.width) * (1 - sprite._transformationAnchor.x);
-                var w1 = (sprite._contentSize.width) * -sprite._transformationAnchor.x;
-                var h1 = sprite._contentSize.height * (1 - sprite._transformationAnchor.y);
-                var h0 = sprite._contentSize.height * -sprite._transformationAnchor.y;
+                //var w0 = (sprite._contentSize.width ) * (1-sprite._transformationAnchor.x);
+                //var w1 = (sprite._contentSize.width ) * -sprite._transformationAnchor.x;
+                //
+                //var h1 = sprite._contentSize.height * (1-sprite._transformationAnchor.y);
+                //var h0 = sprite._contentSize.height * -sprite._transformationAnchor.y;
                 dbuint[dbi + 2] = dbuint[dbi + 12] = dbuint[dbi + 22] = dbuint[dbi + 32] = cc;
                 db[dbi] = db[dbi + 10] = db[dbi + 20] = db[dbi + 30] = sprite.x;
                 db[dbi + 1] = db[dbi + 11] = db[dbi + 21] = db[dbi + 31] = sprite.y;
                 db[dbi + 7] = db[dbi + 17] = db[dbi + 27] = db[dbi + 37] = sprite.rotationAngle;
                 db[dbi + 8] = db[dbi + 18] = db[dbi + 28] = db[dbi + 38] = sprite.scaleX;
                 db[dbi + 9] = db[dbi + 19] = db[dbi + 29] = db[dbi + 39] = sprite.scaleY;
+                var w0 = sprite.width / 2.0;
+                var w1 = -w0;
+                var h1 = sprite.height / 2.0;
+                var h0 = -h1;
                 db[dbi + 3] = u0;
                 db[dbi + 4] = v0;
                 db[dbi + 5] = w0;
@@ -16490,7 +17600,7 @@ var cc;
              * @member cc.render.GeometryBatcher.MAX_QUADS
              * @type {number}
              */
-            GeometryBatcher.MAX_QUADS = 26214; // 1Mb/40
+            GeometryBatcher.MAX_QUADS = 16383;
             return GeometryBatcher;
         })();
         render.GeometryBatcher = GeometryBatcher;
@@ -16649,6 +17759,12 @@ var cc;
                  * @private
                  */
                 this._canvas = null;
+                /**
+                 * Get RenderingContext type.
+                 * @member cc.render.DecoratedWebGLRenderingContext#get:type
+                 * @returns {number} cc.render.RENDERER_TYPE_WEBGL or cc.render.RENDERER_TYPE_CANVAS
+                 */
+                this.type = cc.render.RENDERER_TYPE_WEBGL;
                 this._renderer = r;
                 this._canvas = r._surface;
                 this.__initContext();
@@ -16762,7 +17878,7 @@ var cc;
                  * and not in the client. Thus it is mandatory to send the correct projection matrix based on the
                  * y-axis rendering origin.
                  */
-                this._shaders[2]._uniformProjection.setValue(cc.render.RENDER_ORIGIN === "top" ? opm : opm_inverse);
+                this._shaders[2]._uniformProjection.setValue(cc.render.RENDER_ORIGIN === cc.render.ORIGIN_TOP ? opm : opm_inverse);
                 this._shaders[3]._uniformProjection.setValue(opm);
             };
             Object.defineProperty(DecoratedWebGLRenderingContext.prototype, "canvas", {
@@ -16792,16 +17908,12 @@ var cc;
                 enumerable: true,
                 configurable: true
             });
-            Object.defineProperty(DecoratedWebGLRenderingContext.prototype, "globalAlpha", {
-                get: function () {
-                    return this._currentContextSnapshot._globalAlpha;
-                },
-                set: function (v) {
-                    this._currentContextSnapshot._globalAlpha = v;
-                },
-                enumerable: true,
-                configurable: true
-            });
+            DecoratedWebGLRenderingContext.prototype.setGlobalAlpha = function (v) {
+                this._currentContextSnapshot._globalAlpha = v;
+            };
+            DecoratedWebGLRenderingContext.prototype.getGlobalAlpha = function () {
+                return this._currentContextSnapshot._globalAlpha;
+            };
             /**
              * Set the current rendering composite operation (blend mode).
              * The value is any of:
@@ -16922,6 +18034,8 @@ var cc;
                 if (this._batcher.batchRect(x, y, w, h, this._currentContextSnapshot)) {
                     this.flush();
                 }
+            };
+            DecoratedWebGLRenderingContext.prototype.drawTextureUnsafe = function (texture, sx, sy, sw, sh, dx, dy, dw, dh) {
             };
             DecoratedWebGLRenderingContext.prototype.drawTexture = function (texture, sx, sy, sw, sh, dx, dy, dw, dh) {
                 var ti = texture;
@@ -17069,18 +18183,6 @@ var cc;
             DecoratedWebGLRenderingContext.prototype.getUnitsFactor = function () {
                 return this._renderer.getUnitsFactor();
             };
-            Object.defineProperty(DecoratedWebGLRenderingContext.prototype, "type", {
-                /**
-                 * Get RenderingContext type.
-                 * @member cc.render.DecoratedWebGLRenderingContext#get:type
-                 * @returns {string} "webgl" or "canvas" (lowercase)
-                 */
-                get: function () {
-                    return "webgl";
-                },
-                enumerable: true,
-                configurable: true
-            });
             /**
              * @method cc.render.DecoratedWebGLRenderingContext#__drawImageFlushIfNeeded
              * @param textureId {WebGLTexture}
@@ -17507,22 +18609,30 @@ var cc;
             ScaleManager.prototype.__initialize = function () {
                 var prefix = ['', 'moz', 'ms', 'webkit'];
                 for (var i = 0; i < prefix.length; i++) {
-                    if (document.body[prefix[i] + (prefix[i] === '' ? 'requestFullscreen' : 'RequestFullscreen')]) {
-                        this._prefix = prefix[i];
-                        this._requestFullScreen = prefix[i] === '' ? 'requestFullscreen' : prefix[i] + 'RequestFullscreen';
-                        this._exitFullScreen = prefix[i] === '' ? 'exitFullscreen' : prefix[i] + 'ExitFullscreen';
-                        if (prefix[i] === 'moz') {
+                    if (prefix[i] === "moz") {
+                        if (typeof document.body['mozRequestFullScreen'] !== "undefined") {
+                            this._prefix = 'moz';
+                            this._requestFullScreen = 'mozRequestFullScreen';
                             this._exitFullScreen = 'mozCancelFullScreen';
-                        }
-                        else if (prefix[i] === 'ms') {
-                            document.addEventListener('MSFullscreenChange', this.__fullScreenChange.bind(this), false);
-                            document.addEventListener('MSFullscreenError', this.__fullScreenError.bind(this), false);
-                        }
-                        else {
                             document.addEventListener(this._prefix + 'fullscreenchange', this.__fullScreenChange.bind(this), false);
                             document.addEventListener(this._prefix + 'fullscreenerror', this.__fullScreenError.bind(this), false);
                         }
-                        break;
+                    }
+                    else {
+                        if (document.body[prefix[i] + (prefix[i] === '' ? 'requestFullscreen' : 'RequestFullscreen')]) {
+                            this._prefix = prefix[i];
+                            this._requestFullScreen = prefix[i] === '' ? 'requestFullscreen' : prefix[i] + 'RequestFullscreen';
+                            this._exitFullScreen = prefix[i] === '' ? 'exitFullscreen' : prefix[i] + 'ExitFullscreen';
+                            if (prefix[i] === 'ms') {
+                                document.addEventListener('MSFullscreenChange', this.__fullScreenChange.bind(this), false);
+                                document.addEventListener('MSFullscreenError', this.__fullScreenError.bind(this), false);
+                            }
+                            else {
+                                document.addEventListener(this._prefix + 'fullscreenchange', this.__fullScreenChange.bind(this), false);
+                                document.addEventListener(this._prefix + 'fullscreenerror', this.__fullScreenError.bind(this), false);
+                            }
+                            break;
+                        }
                     }
                 }
                 this._fullScreenCapable = null !== this._prefix;
@@ -17814,7 +18924,7 @@ var cc;
                     var scale = Math.min(this._surface.width / this._units.width, this._surface.height / this._units.height);
                     this._unitsFactor = scale;
                     cc.math.Matrix3.setScale(this._unitsMatrix, scale, scale);
-                    if (cc.render.RENDER_ORIGIN === "bottom") {
+                    if (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM) {
                         // invert viewport
                         var um = this.getScaleContentMatrix();
                         um[1] *= -1;
@@ -17960,6 +19070,67 @@ var cc;
             return ScaleManager;
         })();
         render.ScaleManager = ScaleManager;
+    })(render = cc.render || (cc.render = {}));
+})(cc || (cc = {}));
+
+/**
+ * License: see license.txt file.
+ */
+var cc;
+(function (cc) {
+    var render;
+    (function (render) {
+        var util;
+        (function (util) {
+            function getAlphaChannel(image) {
+                return getChannel(image, 3);
+            }
+            util.getAlphaChannel = getAlphaChannel;
+            function getRedChannel(image) {
+                return getChannel(image, 0);
+            }
+            util.getRedChannel = getRedChannel;
+            function getGreenChannel(image) {
+                return getChannel(image, 1);
+            }
+            util.getGreenChannel = getGreenChannel;
+            function getBlueChannel(image) {
+                return getChannel(image, 2);
+            }
+            util.getBlueChannel = getBlueChannel;
+            function getChannel(image, channel) {
+                var canvas = null;
+                var ctx = null;
+                if (image instanceof HTMLCanvasElement) {
+                    canvas = image;
+                    ctx = canvas.getContext("2d");
+                }
+                else {
+                    var canvas = createCanvas(image.width, image.height);
+                    ctx = canvas.getContext("2d");
+                    ctx.drawImage(image, 0, 0);
+                }
+                var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                return extractChannel(imageData.data, canvas.width, canvas.height, 3);
+            }
+            util.getChannel = getChannel;
+            function createCanvas(w, h) {
+                var canvas = document.createElement("canvas");
+                canvas.width = w;
+                canvas.height = h;
+                return canvas;
+            }
+            util.createCanvas = createCanvas;
+            function extractChannel(data, width, height, channel) {
+                var ret = typeof Uint8Array !== "undefined" ? new Uint8Array(width * height) : new Array(width * height);
+                var pos = 0;
+                for (var i = 0; i < data.length; i += 4) {
+                    ret[pos++] = data[i + channel];
+                }
+                return ret;
+            }
+            util.extractChannel = extractChannel;
+        })(util = render.util || (render.util = {}));
     })(render = cc.render || (cc.render = {}));
 })(cc || (cc = {}));
 
@@ -19537,7 +20708,7 @@ var cc;
                     if (null === this._frame || this._frame._rect.isEmpty()) {
                         return;
                     }
-                    if (nextChar) {
+                    if (nextChar !== null) {
                         var _kerning = this._kerningInfo[nextChar];
                         if (_kerning) {
                             x += _kerning;
@@ -19545,7 +20716,7 @@ var cc;
                     }
                     var rect = this._frame._rect;
                     var _y;
-                    if (cc.render.RENDER_ORIGIN === "top") {
+                    if (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_TOP) {
                         _y = y + this._yoffset;
                     }
                     else {
@@ -19590,6 +20761,7 @@ var cc;
              *
              * Fonts can be cached in the AssetManager.
              *
+             * BUGBUG: fonts are slow. remove all split calls in favor or faster methods.
              */
             var SpriteFont = (function () {
                 /**
@@ -19824,7 +20996,8 @@ var cc;
                 /**
                  * Draw text with the font.
                  * Characters not present in the font will be skipped, as if they were not in the string.
-                 * The string can be multiline, by splitting it with \n character.
+                 * The string can be multiline, and text is splitted in lines with \n character.
+                 * The split operation is slow and GC prone, so better call drawTextArray.
                  * @method cc.plugin.font.SpriteFont#drawText
                  * @param ctx {cc.render.RenderingContext}
                  * @param text {string}
@@ -19832,22 +21005,46 @@ var cc;
                  * @param y {number}
                  */
                 SpriteFont.prototype.drawText = function (ctx, text, x, y) {
-                    var xx = x;
                     var lines = text.split('\n');
-                    if (cc.render.RENDER_ORIGIN === "bottom") {
+                    this.drawTextArray(ctx, lines, x, y);
+                };
+                /**
+                 * Draw an array of strings. Each string will be considered one line of text.
+                 * This method will be called by drawText. Prefer this method to avoid creating intermediate strings
+                 * per frame compared to drawText.
+                 * @param ctx {cc.render.RenderingContext}
+                 * @param lines {string[]}
+                 * @param x {number}
+                 * @param y {number}
+                 */
+                SpriteFont.prototype.drawTextArray = function (ctx, lines, x, y) {
+                    var h = this._height;
+                    if (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM) {
                         y += (lines.length - 1) * this._height;
+                        h = -h;
                     }
                     for (var n = 0; n < lines.length; n++) {
-                        for (var i = 0; i < lines[n].length; i++) {
-                            var char = this._chars[lines[n].charAt(i)];
-                            if (char) {
-                                // draw char
-                                char.draw(ctx, x, y, lines[n].charAt(i + 1));
-                                x += char._xadvance;
-                            }
+                        this.drawTextLine(ctx, lines[n], x, y);
+                        y += h;
+                    }
+                };
+                /**
+                 * This method is like drawText but does not take into account line breaks.
+                 * It will therefore draw all text in one single line.
+                 * This method is called by drawTextArray. Prefer this method if the text has one single line of text.
+                 * @param ctx {cc.render.RenderingContext}
+                 * @param text {string}
+                 * @param x {number}
+                 * @param y {number}
+                 */
+                SpriteFont.prototype.drawTextLine = function (ctx, text, x, y) {
+                    for (var i = 0; i < text.length; i++) {
+                        var char = this._chars[text.charAt(i)];
+                        if (char) {
+                            // draw char
+                            char.draw(ctx, x, y, i < text.length - 1 ? text.charAt(i + 1) : null);
+                            x += char._xadvance;
                         }
-                        y += this._height * (cc.render.RENDER_ORIGIN === "bottom" ? -1 : 1);
-                        x = xx;
                     }
                 };
                 /**
@@ -19870,7 +21067,7 @@ var cc;
                     var textHeight = textSize.height;
                     var yoffset = 0;
                     // make top be always up regardless how y-axis grows.
-                    if (cc.render.RENDER_ORIGIN === "bottom") {
+                    if (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM) {
                         if (valign === 2 /* BOTTOM */) {
                             valign = 0 /* TOP */;
                         }
@@ -19885,7 +21082,7 @@ var cc;
                         case 2 /* BOTTOM */:
                             yoffset = height - textHeight - 1;
                     }
-                    if (cc.render.RENDER_ORIGIN === "bottom") {
+                    if (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM) {
                         yoffset += (lines.length - 1) * this._height;
                     }
                     var xx = x;
@@ -19905,7 +21102,7 @@ var cc;
                             }
                             var wordWidth = this.getStringWidth(word);
                             if (x + wordWidth > width) {
-                                y += this._height * (cc.render.RENDER_ORIGIN === "bottom" ? -1 : 1);
+                                y += this._height * (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM ? -1 : 1);
                                 x = 0;
                             }
                             for (var j = 0; j < word.length; j++) {
@@ -19917,7 +21114,7 @@ var cc;
                                 }
                             }
                         }
-                        y += this._height * (cc.render.RENDER_ORIGIN === "bottom" ? -1 : 1);
+                        y += this._height * (cc.render.RENDER_ORIGIN === cc.render.ORIGIN_BOTTOM ? -1 : 1);
                         x = xx;
                     }
                 };
@@ -20319,6 +21516,8 @@ var cc;
                 };
                 /**
                  * Get an array of sprite frames identified by an array of SpriteFrame ids.
+                 * If any of the ids does not match a SpriteFrame object, a warning will be printed in the console,
+                 * but nothing will happen.
                  * @method cc.plugin.asset.AssetManager.getSpriteFrames
                  * @param ids {Array<string>}
                  * @returns {Array<cc.node.sprite.SpriteFrame>}
@@ -20395,11 +21594,17 @@ var cc;
                  * @method cc.plugin.asset.AssetManager.addSpriteFramesFromFrameWithJSON
                  * @param spriteFrameId {string} a SpriteFrame in the cache.
                  * @param json {any}
+                 * @param prefix {string=} an optional prefix to prepend to all sprite frame names.
                  */
-                AssetManager.addSpriteFramesFromFrameWithJSON = function (spriteFrameId, json) {
+                AssetManager.addSpriteFramesFromFrameWithJSON = function (spriteFrameId, json, prefix) {
                     var spriteFrame = AssetManager.getSpriteFrame(spriteFrameId);
                     if (spriteFrame) {
                         var frames = spriteFrame.createSpriteFramesFromJSON(json);
+                        if (prefix) {
+                            for (var i = 0; i < frames.length; i++) {
+                                frames[i]._name = prefix + frames[i]._name;
+                            }
+                        }
                         AssetManager.addSpriteFrames(frames);
                     }
                 };
@@ -20745,6 +21950,7 @@ var cc;
                      * @private
                      */
                     this._convolverEnabled = false;
+                    this._playbackRate = 1;
                     this._isWebAudio = true;
                     if (buffer) {
                         this.setBuffer(buffer);
@@ -20846,6 +22052,19 @@ var cc;
                         }
                     }
                 };
+                AudioEffect.prototype.setPlaybackRate = function (rate) {
+                    this._playbackRate = rate;
+                    if (this._source) {
+                        var wasPlaying = this.isPlaying();
+                        if (wasPlaying) {
+                            this.pause();
+                        }
+                        this._source.playbackRate.value = rate;
+                        if (wasPlaying) {
+                            this.resume();
+                        }
+                    }
+                };
                 /**
                  * Get audio duration. If the audio loops, getDuration will be Number.MAX_VALUE, and the buffer or sprite duration
                  * otherwise plus the delay otherwise.
@@ -20891,12 +22110,6 @@ var cc;
                     for (var i = 0; i < chain.length - 1; i++) {
                         chain[i].connect(chain[i + 1]);
                     }
-                    //if (this._filterEnabled) {
-                    //    this._filter.connect(this._gain);
-                    //    this._source.connect(this._filter);
-                    //} else {
-                    //    this._source.connect( this._gain );
-                    //}
                 };
                 /**
                  * Set a filter for the effect.
@@ -20955,6 +22168,7 @@ var cc;
                     this._status = 1 /* PLAY */;
                     this._startPlaybackTime = audioContext.currentTime;
                     this._delayTime = delay;
+                    this._source.playbackRate.value = this._playbackRate;
                     if (this._isSprite) {
                         if (this._isWebAudio) {
                             if (typeof this._source.start === 'undefined') {
@@ -21067,7 +22281,7 @@ var cc;
                     if (this._endTimerId) {
                         return;
                     }
-                    var timeleft = this.getRemainingTime();
+                    var timeleft = this.getRemainingTime() / this._playbackRate;
                     var me = this;
                     this._endTimerId = setTimeout(function () {
                         me._endTimerId = null;
@@ -21372,8 +22586,9 @@ var cc;
                  * This method plays a fully system-controlled sound. There's no user-side control.
                  * To have a client side controlled audio effect object, call <code>createAudio</code>.
                  * @param id {string|AudioBuffer} a string id in the asset manager.
+                 * @param volume {number=} the volume for this effect. if not set, full volume will be used.
                  */
-                AudioManager.prototype.playEffect = function (id) {
+                AudioManager.prototype.playEffect = function (id, volume) {
                     if (this._soundPool.length === 0) {
                         cc.Debug.warn(cc.locale.ERR_SOUND_POOL_EMPTY);
                     }
@@ -21386,6 +22601,7 @@ var cc;
                     }
                     if (null !== ab) {
                         var ae = this._soundPool.pop();
+                        ae.setVolume(volume || 1);
                         ae.setBuffer(ab);
                         ae.play();
                         this._playingPool.push(ae);
@@ -21713,6 +22929,7 @@ var cc;
                      * @private
                      */
                     this._name = '';
+                    this._parent = null;
                     this._bounds = new cc.math.Rectangle();
                     this._insets = new Insets();
                     this._gap = new Gap();
@@ -21796,7 +23013,7 @@ var cc;
                  * @returns {cc.math.Dimension}
                  */
                 BaseLayout.prototype.getPreferredSize = function () {
-                    return new cc.math.Dimension(this._preferredWidth.getValue(this._bounds.w), this._preferredHeight.getValue(this._bounds.h));
+                    return new cc.math.Dimension(this._preferredWidth.getValue(this._parent ? this._parent._bounds.w : this._bounds.w), this._preferredHeight.getValue(this._parent ? this._parent._bounds.h : this._bounds.h));
                 };
                 /**
                  * Recursively evaluate the layout elements and get the resulting preferred size.
@@ -21834,6 +23051,7 @@ var cc;
                  */
                 BaseLayout.prototype.layout = function (x, y, w, h) {
                     this.setBounds(x, y, w, h);
+                    this.getPreferredLayoutSize();
                     this.doLayout();
                 };
                 /**
@@ -21888,9 +23106,10 @@ var cc;
                  */
                 BaseLayout.prototype.parseElements = function (children) {
                     var me = this;
-                    function addElement(s) {
+                    function addElement(s, parent) {
                         var elem = cc.plugin.layout.BaseLayout.parse(s);
                         if (elem) {
+                            elem._parent = parent;
                             me._children.push(elem);
                         }
                         else {
@@ -21909,23 +23128,23 @@ var cc;
                                     var from = parseInt(pattern[0]);
                                     var to = parseInt(pattern[1]);
                                     while (from <= to) {
-                                        addElement(prefix + from);
+                                        addElement(prefix + from, this);
                                         from++;
                                     }
                                 }
                                 else {
                                     /// wrong pattern ?!?!?!?!?
                                     console.log("wrong pattern for element by name: " + elem);
-                                    addElement(elem);
+                                    addElement(elem, this);
                                 }
                             }
                             else {
                                 // not name pattern.
-                                addElement(elem);
+                                addElement(elem, this);
                             }
                         }
                         else {
-                            addElement(children[i]);
+                            addElement(children[i], this);
                         }
                     }
                 };
@@ -22107,6 +23326,7 @@ var cc;
                 BorderLayout.prototype.left = function (e) {
                     this._children.push(e);
                     this._left = e;
+                    this._left._parent = this;
                     return this;
                 };
                 /**
@@ -22118,6 +23338,7 @@ var cc;
                 BorderLayout.prototype.right = function (e) {
                     this._children.push(e);
                     this._right = e;
+                    this._right._parent = this;
                     return this;
                 };
                 /**
@@ -22129,6 +23350,7 @@ var cc;
                 BorderLayout.prototype.top = function (e) {
                     this._children.push(e);
                     this._top = e;
+                    this._top._parent = this;
                     return this;
                 };
                 /**
@@ -22140,6 +23362,7 @@ var cc;
                 BorderLayout.prototype.bottom = function (e) {
                     this._children.push(e);
                     this._bottom = e;
+                    this._bottom._parent = this;
                     return this;
                 };
                 /**
@@ -22151,6 +23374,7 @@ var cc;
                 BorderLayout.prototype.center = function (e) {
                     this._children.push(e);
                     this._center = e;
+                    this._center._parent = this;
                     return this;
                 };
                 /**
@@ -22213,6 +23437,7 @@ var cc;
                     if (this._bottom) {
                         this._bottom.setSize(right - left, this._bottom._bounds.h);
                         d = this._bottom.getPreferredLayoutSize();
+                        d.height = Math.min(d.height, bottom - top);
                         this._bottom._bounds.set(left, bottom - d.height, right - left, d.height);
                         this._bottom.doLayout();
                         bottom -= d.height + this._gap.vertical.getValue(this._bounds.h);
@@ -22227,6 +23452,7 @@ var cc;
                     if (this._left) {
                         this._left.setSize(this._left._bounds.w, bottom - top);
                         d = this._left.getPreferredLayoutSize();
+                        d.width = Math.min(d.width, right - left);
                         this._left._bounds.set(left, top, d.width, bottom - top);
                         this._left.doLayout();
                         left += d.width + this._gap.horizontal.getValue(this._bounds.w);
@@ -22352,7 +23578,7 @@ var cc;
                     d.height += rows * ret.height + (rows - 1) * this._gap.vertical.getValue(this._bounds.h);
                     var pd = this.getPreferredSize();
                     d.width = Math.max(d.width, pd.width);
-                    d.height = Math.max(d.width, pd.height);
+                    d.height = Math.max(d.height, pd.height);
                     this._rows = rows;
                     this._columns = columns;
                     return d;
@@ -22457,6 +23683,7 @@ var cc;
  * License: see license.txt file.
  */
 /// <reference path="../node/Node.ts"/>
+/// <reference path="../math/Point.ts"/>
 /// <reference path="../locale/Locale.ts"/>
 /// <reference path="../util/Debug.ts"/>
 /// <reference path="./KeyboardInputManager.ts"/>
@@ -22506,6 +23733,11 @@ var cc;
                 enumerable: true,
                 configurable: true
             });
+            /**
+             * Get the event target.
+             * @method cc.input.InputManagerEvent#getCurrentTarget
+             * @returns {cc.node.Node}
+             */
             InputManagerEvent.prototype.getCurrentTarget = function () {
                 return this._target;
             };
@@ -22539,7 +23771,7 @@ var cc;
          * @class cc.input.InputManager
          * @classdesc
          *
-         * General input manger object.
+         * General input manager object.
          *
          */
         var InputManager = (function () {
@@ -22763,8 +23995,12 @@ var cc;
              * @param e {cc.input.MouseInputManager}
              * @returns {cc.node.Node}
              */
-            SceneGraphInputTreeNode.prototype.findNodeAtScreenPoint = function (e) {
-                return this.__findNodeAtScreenPoint(this, e);
+            SceneGraphInputTreeNode.prototype.findNodeAtScreenPoint = function (p, callback) {
+                var node = this.__findNodeAtScreenPoint(this, p, callback);
+                if (!node && callback) {
+                    callback(null);
+                }
+                return node;
             };
             /**
              * findNodeAtScreenPoint's implementation
@@ -22774,10 +24010,12 @@ var cc;
              * @returns {cc.node.Node}
              * @private
              */
-            SceneGraphInputTreeNode.prototype.__findNodeAtScreenPoint = function (inputNode, e) {
+            SceneGraphInputTreeNode.prototype.__findNodeAtScreenPoint = function (inputNode, p, callback) {
                 var i;
+                var pp = new cc.math.Vector();
+                pp.set(p.x, p.y);
                 for (i = 0; i < inputNode.children.length; i++) {
-                    var node = this.__findNodeAtScreenPoint(inputNode.children[i], e);
+                    var node = this.__findNodeAtScreenPoint(inputNode.children[i], p, callback);
                     if (node) {
                         return node;
                     }
@@ -22785,11 +24023,21 @@ var cc;
                 // all enabled nodes, must be added to the list of enabled elements.
                 if (inputNode.enabled) {
                     var node = inputNode.node;
-                    e.localPoint.set(e._screenPoint.x, e._screenPoint.y);
-                    if (node.isScreenPointInNode(e.localPoint)) {
-                        return node;
+                    p.set(pp.x, pp.y);
+                    if (node.isScreenPointInNode(p)) {
+                        //return node;
+                        if (callback) {
+                            if (!callback(node)) {
+                                return node;
+                            }
+                            p.set(pp.x, pp.y);
+                        }
+                        else {
+                            return node;
+                        }
                     }
                 }
+                p.set(pp.x, pp.y);
                 return null;
             };
             return SceneGraphInputTreeNode;
@@ -22912,12 +24160,9 @@ var cc;
             mie.initializeEventForTarget(node, event);
             return mie;
         }
-        //function createEventTouch( e:TouchEvent, event:string, node:Node ) : MouseInputManagerEvent {
-        //
-        //}
-        function routeEvent(e) {
+        function routeEvent(p, callback) {
             if (_scene) {
-                return _scene.findNodeAtScreenPoint(e);
+                return _scene.findNodeAtScreenPoint(p, callback);
             }
             return null;
         }
@@ -22935,20 +24180,27 @@ var cc;
         }
         function __inputDown(ee, event) {
             _isMouseDown = true;
-            var node = routeEvent(ee);
-            // new node is not previous one. complicated, this is a down, and a move usually comes first
-            // so what ? out to the previous one ?
-            if (_currentCaptureNode !== node && _currentCaptureNode) {
-                ee._type = event === "mousedown" ? "mouseout" : "touchend";
-                _currentCaptureNode.notifyEvent(ee);
-            }
-            ee._type = event;
-            _currentCaptureNode = node;
-            if (_currentCaptureNode) {
-                ee._target = _currentCaptureNode;
-                _currentCaptureNode.notifyEvent(ee);
-            }
-            _prevScreenPoint.set(ee.screenPoint.x, ee.screenPoint.y);
+            ee._localPoint.set(ee._screenPoint.x, ee._screenPoint.y);
+            routeEvent(ee._localPoint, function (node) {
+                var ret = false;
+                if (node) {
+                    ee._type = event;
+                    ee._target = node;
+                    ret = node.notifyEvent(ee);
+                }
+                if (_currentCaptureNode !== node && !ret) {
+                    if (_currentCaptureNode) {
+                        ee._type = event === "mousedown" ? "mouseout" : "touchend";
+                        ee._target = _currentCaptureNode;
+                        _currentCaptureNode.notifyEvent(ee);
+                    }
+                }
+                if (!ret) {
+                    _currentCaptureNode = node;
+                }
+                _prevScreenPoint.set(ee.screenPoint.x, ee.screenPoint.y);
+                return ret;
+            });
         }
         /**
          * Mouse up handler
@@ -22963,7 +24215,9 @@ var cc;
             __inputUp(createEvent(e, "mouseup", _currentCaptureNode), "mouseup");
         }
         function __inputUp(ee, event) {
-            var node = routeEvent(ee);
+            ee._localPoint.set(ee._screenPoint.x, ee._screenPoint.y);
+            var node = routeEvent(ee._localPoint);
+            var ret = false;
             if (_currentCaptureNode) {
                 // up in a different node
                 if (_currentCaptureNode !== node) {
@@ -23008,33 +24262,47 @@ var cc;
             __inputMove(createEvent(e, event, _currentCaptureNode), event);
         }
         function __inputMove(ee, event) {
+            if (_isMouseDown) {
+                _isDragging = true;
+                _isDraggingInCapture = true;
+            }
             // drag is sent to the captured node.
             if (!_isDragging) {
-                var node = routeEvent(ee);
-                // there's a new target node different to the previous one
-                if (node !== _currentCaptureNode) {
-                    // if there's a previous capture node notify mouse-out on it.
-                    if (_currentCaptureNode) {
-                        ee._type = event === "mousedrag" || event === "mousemove" ? "mouseout" : "touchout";
-                        _currentCaptureNode.notifyEvent(ee);
-                    }
-                    if (node !== null) {
-                        ee._type = event === "mousedrag" || event === "mousemove" ? "mouseover" : "touchover";
+                ee._localPoint.set(ee._screenPoint.x, ee._screenPoint.y);
+                routeEvent(ee._localPoint, function (node) {
+                    var ret = false;
+                    if (node) {
+                        ee._type = event;
                         ee._target = node;
-                        node.notifyEvent(ee);
+                        ret = node.notifyEvent(ee);
                     }
-                }
-                // set capture node as the new found node
-                _currentCaptureNode = node;
-                if (_isMouseDown) {
-                    _isDragging = true;
-                    _isDraggingInCapture = true;
-                }
+                    if (node !== _currentCaptureNode && !ret) {
+                        // if there's a previous capture node notify mouse-out on it.
+                        if (_currentCaptureNode) {
+                            ee._type = event === "mousedrag" || event === "mousemove" ? "mouseout" : "touchout";
+                            ee._target = _currentCaptureNode;
+                            _currentCaptureNode.notifyEvent(ee);
+                        }
+                        if (node) {
+                            ee._type = event === "mousedrag" || event === "mousemove" ? "mouseover" : "touchover";
+                            ee._target = node;
+                            ret = node.notifyEvent(ee);
+                        }
+                    }
+                    if (!ret) {
+                        _currentCaptureNode = node;
+                    }
+                    _prevScreenPoint.set(ee.screenPoint.x, ee.screenPoint.y);
+                    return ret;
+                });
             }
             else {
                 // dragging
                 // dragging outside the capture node ??
-                var node = routeEvent(ee);
+                //routeEvent( ee.screenPoint, function(node:Node) : boolean {
+                ee._localPoint.set(ee._screenPoint.x, ee._screenPoint.y);
+                var node = routeEvent(ee._localPoint);
+                var ret = false;
                 if (node !== _currentCaptureNode) {
                     if (_currentCaptureNode) {
                         ee._type = ee._type = event === "mousedrag" || event === "mousemove" ? "mouseout" : "touchout";
@@ -23052,14 +24320,15 @@ var cc;
                         _currentCaptureNode.notifyEvent(ee);
                     }
                 }
+                // notify mouse-over to the new capture node
+                if (_currentCaptureNode !== null) {
+                    ee._type = event;
+                    ee._target = _currentCaptureNode;
+                    //ret= _currentCaptureNode.notifyEvent( ee );
+                    ret = _currentCaptureNode.notifyEvent(ee);
+                }
+                _prevScreenPoint.set(ee.screenPoint.x, ee.screenPoint.y);
             }
-            // notify mouse-over to the new capture node
-            if (_currentCaptureNode !== null) {
-                ee._type = event;
-                ee._target = _currentCaptureNode;
-                _currentCaptureNode.notifyEvent(ee);
-            }
-            _prevScreenPoint.set(ee.screenPoint.x, ee.screenPoint.y);
         }
         /**
          * double click handler.
@@ -23078,10 +24347,14 @@ var cc;
                 _currentCaptureNode.notifyEvent(ee);
             }
             else {
-                _currentCaptureNode = routeEvent(ee);
-                if (_currentCaptureNode) {
-                    _currentCaptureNode.notifyEvent(ee);
-                }
+                ee._localPoint.set(ee._screenPoint.x, ee._screenPoint.y);
+                routeEvent(ee._localPoint, function (node) {
+                    var ret = false;
+                    if (_currentCaptureNode) {
+                        ret = _currentCaptureNode.notifyEvent(ee);
+                    }
+                    return ret;
+                });
             }
             _prevScreenPoint = null;
         }
@@ -23355,6 +24628,9 @@ var cc;
             return MouseInputManagerEvent;
         })(InputManagerEvent);
         input.MouseInputManagerEvent = MouseInputManagerEvent;
+        function hasTouch() {
+            return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
+        }
         /**
          * @class cc.input.MouseInputManager
          * @classdesc
@@ -23402,15 +24678,19 @@ var cc;
                     this.disable();
                 }
                 _target = target;
-                window.addEventListener('mouseup', mouseUp, false);
-                window.addEventListener('mousedown', mouseDown, false);
-                window.addEventListener('mouseover', mouseOver, false);
-                window.addEventListener('mouseout', mouseOut, false);
-                window.addEventListener('mousemove', mouseMove, false);
-                window.addEventListener('dblclick', doubleClick, false);
-                target.addEventListener("touchstart", touchStart, false);
-                target.addEventListener("touchmove", touchMove, false);
-                target.addEventListener("touchend", touchEnd, false);
+                if (hasTouch()) {
+                    target.addEventListener("touchstart", touchStart, false);
+                    target.addEventListener("touchmove", touchMove, false);
+                    target.addEventListener("touchend", touchEnd, false);
+                }
+                else {
+                    window.addEventListener('mouseup', mouseUp, false);
+                    window.addEventListener('mousedown', mouseDown, false);
+                    window.addEventListener('mouseover', mouseOver, false);
+                    window.addEventListener('mouseout', mouseOut, false);
+                    window.addEventListener('mousemove', mouseMove, false);
+                    window.addEventListener('dblclick', doubleClick, false);
+                }
             };
             /**
              * Disable the input for mouse and touch.
@@ -23418,15 +24698,19 @@ var cc;
              */
             MouseInputManager.disable = function () {
                 if (_target !== null) {
-                    window.removeEventListener('mouseup', mouseUp, false);
-                    window.removeEventListener('mousedown', mouseDown, false);
-                    window.removeEventListener('mouseover', mouseOver, false);
-                    window.removeEventListener('mouseout', mouseOut, false);
-                    window.removeEventListener('mousemove', mouseMove, false);
-                    window.removeEventListener('dblclick', doubleClick, false);
-                    _target.removeEventListener("touchstart", touchStart, false);
-                    _target.removeEventListener("touchmove", touchMove, false);
-                    _target.removeEventListener("touchend", touchEnd, false);
+                    if (hasTouch()) {
+                        _target.removeEventListener("touchstart", touchStart, false);
+                        _target.removeEventListener("touchmove", touchMove, false);
+                        _target.removeEventListener("touchend", touchEnd, false);
+                    }
+                    else {
+                        window.removeEventListener('mouseup', mouseUp, false);
+                        window.removeEventListener('mousedown', mouseDown, false);
+                        window.removeEventListener('mouseover', mouseOver, false);
+                        window.removeEventListener('mouseout', mouseOut, false);
+                        window.removeEventListener('mousemove', mouseMove, false);
+                        window.removeEventListener('dblclick', doubleClick, false);
+                    }
                     _target = null;
                 }
             };
@@ -24477,6 +25761,7 @@ var cc;
     cc.jumpBy = jumpBy;
     function __jump(timeInSecs, pos, amplitude, jumps, relative) {
         return new JumpAction({
+            type: "JumpAction",
             position: pos,
             jumps: jumps,
             amplitude: amplitude,
@@ -24485,7 +25770,7 @@ var cc;
     }
     function __catmull(timeInSecs, p, tension, relative, closed) {
         var segment = new Path().catmullRomTo(p, closed, tension);
-        return new PathAction({ segment: segment }).setRelative(relative).timeInfo(0, timeInSecs);
+        return new PathAction({ type: "PathAction", segment: segment }).setRelative(relative).timeInfo(0, timeInSecs);
     }
     function cardinalSplineTo(timeInSecs, p, tension, closed) {
         if (closed === void 0) { closed = false; }
@@ -24509,6 +25794,7 @@ var cc;
     cc.catmullRomBy = catmullRomBy;
     function __bezier(timeInSecs, p, relative) {
         return new PathAction({
+            type: "PathAction",
             segment: new SegmentBezier({
                 p0: { x: 0, y: 0 },
                 p1: p[0],
@@ -25788,7 +27074,6 @@ var cc;
     };
     cc.node.Node.extend = _Class.extend;
     cc.node.Sprite.extend = _Class.extend;
-    cc.node.FastSprite.extend = _Class.extend;
     cc.node.SpriteBatchNode.extend = _Class.extend;
     cc.node.Scene.extend = _Class.extend;
     cc.action.Action.extend = _Class.extend;
