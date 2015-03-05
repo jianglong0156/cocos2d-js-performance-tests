@@ -7,7 +7,7 @@ var EDV4 = 2;
 var ED = ED || {};
 ED.gameObj = {};
 ED.version = EDV3;
-
+ED.MODEL_STR = "webgl";
 
 if (!cc.sys)
 {
@@ -513,11 +513,19 @@ ED.getRenderStr = function ()
 
 if (ED.version === EDV3)
 {
+
     ED.FastSprite = cc.Sprite;
 }
 else
 {
-    ED.FastSprite = cc.node.FastSprite;
+    if (ED.MODEL_STR === "webgl")
+    {
+        ED.FastSprite = cc.node.FastSprite;
+    }
+    else
+    {
+        ED.FastSprite = cc.node.Sprite;
+    }
     //ED.FastSprite = cc.Sprite;
 }
 
