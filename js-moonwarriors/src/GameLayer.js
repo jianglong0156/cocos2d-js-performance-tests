@@ -185,7 +185,7 @@ var GameLayer = cc.Layer.extend({
         {
             children = this._texOpaqueBatch._children;
         }
-        for (i in children) {
+        for (var i = 0; i< children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 nodeNum++;
@@ -196,7 +196,7 @@ var GameLayer = cc.Layer.extend({
         {
             children = this._sparkBatch._children;
         }
-        for (i in children) {
+        for (var i = 0; i< children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 nodeNum++;
@@ -207,7 +207,7 @@ var GameLayer = cc.Layer.extend({
         {
             children = this._texTransparentBatch._children;
         }
-        for (i in children) {
+        for (var i = 0; i< children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 nodeNum++;
@@ -218,7 +218,7 @@ var GameLayer = cc.Layer.extend({
         {
             children = this._enemyNode._children;
         }
-        for (i in children) {
+        for (var i = 0; i< children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 nodeNum++;
@@ -309,28 +309,28 @@ var GameLayer = cc.Layer.extend({
     },
     removeInactiveUnit:function (dt) {
         var i, selChild, children = this._texOpaqueBatch.getChildren();
-        for (i in children) {
+        for (var i = 0; i< children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 selChild.update(dt);
         }
 
         children = this._sparkBatch.getChildren();
-        for (i in children) {
+        for (var i = 0; i< children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 selChild.update(dt);
         }
 
         children = this._texTransparentBatch.getChildren();
-        for (i in children) {
+        for (var i = 0; i< children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 selChild.update(dt);
         }
 
         children = this._enemyNode.getChildren();
-        for (i in children) {
+        for (var i = 0; i< children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 selChild.update(dt);
