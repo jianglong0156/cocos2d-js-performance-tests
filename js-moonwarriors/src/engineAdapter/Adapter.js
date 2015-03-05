@@ -372,7 +372,7 @@ if (!cc.sys)
      * @name isMobile
      * @type {Boolean}
      */
-    sys.isMobile = ua.indexOf('mobile') != -1 || ua.indexOf('android') != -1;
+    sys.isMobile = ua.indexOf('mobile') !== -1 || ua.indexOf('android') !== -1;
 
     /**
      * Indicate the running platform
@@ -399,12 +399,12 @@ if (!cc.sys)
         || ua.match(/chrome|safari/i);
     if (browserTypes && browserTypes.length > 0) {
         browserType = browserTypes[0];
-        if (browserType == 'micromessenger') {
+        if (browserType === 'micromessenger') {
             browserType = sys.BROWSER_TYPE_WECHAT;
         } else if (browserType === "safari" && (ua.match(/android.*applewebkit/)))
             browserType = sys.BROWSER_TYPE_ANDROID;
-        else if (browserType == "trident") browserType = sys.BROWSER_TYPE_IE;
-        else if (browserType == "360 aphone") browserType = sys.BROWSER_TYPE_360;
+        else if (browserType === "trident") browserType = sys.BROWSER_TYPE_IE;
+        else if (browserType === "360 aphone") browserType = sys.BROWSER_TYPE_360;
     }
     /**
      * Indicate the running browser type
@@ -418,12 +418,12 @@ if (!cc.sys)
     var iOS = ( ua.match(/(iPad|iPhone|iPod)/i) ? true : false );
     var isAndroid = ua.match(/android/i) || nav.platform.match(/android/i) ? true : false;
     var osName = sys.OS_UNKNOWN;
-    if (nav.appVersion.indexOf("Win") != -1) osName = sys.OS_WINDOWS;
+    if (nav.appVersion.indexOf("Win") !== -1) osName = sys.OS_WINDOWS;
     else if (iOS) osName = sys.OS_IOS;
-    else if (nav.appVersion.indexOf("Mac") != -1) osName = sys.OS_OSX;
-    else if (nav.appVersion.indexOf("X11") != -1 && nav.appVersion.indexOf("Linux") == -1) osName = sys.OS_UNIX;
+    else if (nav.appVersion.indexOf("Mac") !== -1) osName = sys.OS_OSX;
+    else if (nav.appVersion.indexOf("X11") !== -1 && nav.appVersion.indexOf("Linux") === -1) osName = sys.OS_UNIX;
     else if (isAndroid) osName = sys.OS_ANDROID;
-    else if (nav.appVersion.indexOf("Linux") != -1) osName = sys.OS_LINUX;
+    else if (nav.appVersion.indexOf("Linux") !== -1) osName = sys.OS_LINUX;
 
     /**
      * Indicate the running os name
@@ -488,7 +488,7 @@ ED.getRenderStr = function ()
 {
     if (ED.version === EDV3)
     {
-        if (cc._renderType == cc._RENDER_TYPE_WEBGL)
+        if (cc._renderType === cc._RENDER_TYPE_WEBGL)
         {
             return "WebGL";
         }
