@@ -74,7 +74,7 @@ Explosion.getOrCreateExplosion = function () {
     var selChild =null;
     for (var j = 0; j < MW.CONTAINER.EXPLOSIONS.length; j++) {
         var selChild = MW.CONTAINER.EXPLOSIONS[j];
-        if (selChild.active == false) {
+        if (selChild.active === false) {
             selChild.visible = true;
             selChild.active = true;
             selChild.play();
