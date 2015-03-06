@@ -72,10 +72,10 @@ var Bullet = cc.Sprite.extend({
 Bullet.getOrCreateBullet = function (bulletSpeed, weaponType, attackMode, zOrder, mode) {
     /**/
     var selChild = null;
-    if (mode == MW.UNIT_TAG.PLAYER_BULLET) {
+    if (mode === MW.UNIT_TAG.PLAYER_BULLET) {
         for (var j = 0; j < MW.CONTAINER.PLAYER_BULLETS.length; j++) {
             selChild = MW.CONTAINER.PLAYER_BULLETS[j];
-            if (selChild.active == false) {
+            if (selChild.active === false) {
                 selChild.visible = true;
                 selChild.HP = 1;
                 selChild.active = true;
@@ -86,7 +86,7 @@ Bullet.getOrCreateBullet = function (bulletSpeed, weaponType, attackMode, zOrder
     else {
         for (var j = 0; j < MW.CONTAINER.ENEMY_BULLETS.length; j++) {
             selChild = MW.CONTAINER.ENEMY_BULLETS[j];
-            if (selChild.active == false) {
+            if (selChild.active === false) {
                 selChild.visible = true;
                 selChild.HP = 1;
                 selChild.active = true;
@@ -101,7 +101,7 @@ Bullet.getOrCreateBullet = function (bulletSpeed, weaponType, attackMode, zOrder
 Bullet.create = function (bulletSpeed, weaponType, attackMode, zOrder, mode) {
     var bullet = new Bullet(bulletSpeed, weaponType, attackMode);
     g_sharedGameLayer.addBullet(bullet, zOrder, mode);
-    if (mode == MW.UNIT_TAG.PLAYER_BULLET) {
+    if (mode === MW.UNIT_TAG.PLAYER_BULLET) {
         MW.CONTAINER.PLAYER_BULLETS.push(bullet);
     } else {
         MW.CONTAINER.ENEMY_BULLETS.push(bullet);

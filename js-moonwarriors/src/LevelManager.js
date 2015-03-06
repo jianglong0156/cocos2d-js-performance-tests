@@ -51,9 +51,9 @@ var LevelManager = cc.Class.extend({
     _minuteToSecond:function(minuteStr){
         if(!minuteStr)
             return 0;
-        if(typeof(minuteStr) !=  "number"){
+        if(typeof(minuteStr) !==  "number"){
             var mins = minuteStr.split(':');
-            if(mins.length == 1){
+            if(mins.length === 1){
                 return parseInt(mins[0],10);
             }else {
                 return parseInt(mins[0],10 )* 60 + parseInt(mins[1],10);
@@ -72,7 +72,7 @@ var LevelManager = cc.Class.extend({
             var selEnemy = locCurrentLevel.enemies[i];
             if(selEnemy){
                 if(selEnemy.ShowType === "Once"){
-                    if(selEnemy.ShowTime == deltaTime){
+                    if(selEnemy.ShowTime === deltaTime){
                         for(var tIndex = 0; tIndex < selEnemy.Types.length;tIndex++ ){
                             this.addEnemyToGameLayer(selEnemy.Types[tIndex]);
                         }

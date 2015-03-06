@@ -79,7 +79,6 @@
 window.addEventListener("DOMContentLoaded", function() {
 
     cc.action.setTimeReferenceInSeconds();
-    cc.render.RENDER_ORIGIN="bottom";
     cc.node.DEFAULT_ANCHOR_POSITION=        new cc.math.Vector(0.5,0.5);
     cc.node.DEFAULT_ANCHOR_TRANSFORMATION=  new cc.math.Vector(0.5,0.5);
     var gameObj = ED.gameObj = new cc.game.Game();
@@ -90,7 +89,7 @@ window.addEventListener("DOMContentLoaded", function() {
             scaleStrategy: "scale_aspect",
             canvasPosition: "center",
             canvasElement: "gameCanvas",
-            renderer:"webgl"
+            renderer:ED.MODEL_STR
         });
         //resizeWithBrowserSize(true).  --> implicit yes.
         ED.LoaderScene.preload(
