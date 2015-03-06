@@ -175,7 +175,7 @@ var GameLayer = cc.Layer.extend({
 
     calcFrame:function ()
     {
-        if (this._state != STATE_PLAYING) {
+        if (this._state !== STATE_PLAYING) {
             return;
         }
 
@@ -192,7 +192,7 @@ var GameLayer = cc.Layer.extend({
                 {
                     this._nodeNumLabel.setString("time:" + aveUpdateNum + " curLength:" + Level1.enemies[0].Types.length + " nodeNum:" + SaveDataToServer._dataObj[1]["nodeNum"]);
                     Enemy.destroyTargetNum(Level1.enemies[0].Types.length);
-                    if (this._desroyContinuousNum == 1 && this._createContinuousNum == 1)
+                    if (this._desroyContinuousNum === 1 && this._createContinuousNum === 1)
                     {
                         Level1.enemies[0].Types.length = (Level1.enemies[0].Types.length / 2) | 0;
                     }
@@ -224,9 +224,9 @@ var GameLayer = cc.Layer.extend({
         this._updateNum = 0;
     },
     scoreCounter:function () {
-        if (this._state == STATE_PLAYING) {
+        if (this._state === STATE_PLAYING) {
             //this._time++;
-            if (this._oldTime == 0) {
+            if (this._oldTime === 0) {
                 this._oldTime = new Date().getTime();
             }
             this._time = Math.round(( new Date().getTime() - this._oldTime ) / 1000);
@@ -250,7 +250,7 @@ var GameLayer = cc.Layer.extend({
     },
 
     processEvent:function (event) {
-        if (this._state == STATE_PLAYING) {
+        if (this._state === STATE_PLAYING) {
             var delta = event.getDelta();
             var curPos = cc.p(this._ship.x, this._ship.y);
             curPos = cc.pAdd(curPos, delta);
@@ -268,7 +268,7 @@ var GameLayer = cc.Layer.extend({
         {
             children = parent._children;
         }
-        for (i in children) {
+        for (var i = 0; i < children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 nodeNum++;
@@ -291,7 +291,7 @@ var GameLayer = cc.Layer.extend({
         this._updateTime += runTime;
         this._updateNum++;
         //console.log(this._totalDt);
-        if (this._state == STATE_PLAYING) {
+        if (this._state === STATE_PLAYING) {
             if (this._totalDt > MW.calcStartTime)
             {
                 if (this._updateNum > 30)
@@ -312,7 +312,7 @@ var GameLayer = cc.Layer.extend({
 
     },
     refreshGame:function () {
-        if (this._state == STATE_PLAYING) {
+        if (this._state === STATE_PLAYING) {
             this.checkIsCollide();
             this.checkIsReborn();
             this.updateUI();
@@ -372,28 +372,28 @@ var GameLayer = cc.Layer.extend({
     },
     removeInactiveUnit:function (dt) {
         var i, selChild, children = this._texOpaqueBatch.getChildren();
-        for (i in children) {
+        for (var i = 0; i < children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 selChild.update(dt);
         }
 
         children = this._sparkBatch.getChildren();
-        for (i in children) {
+        for (var i = 0; i < children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 selChild.update(dt);
         }
 
         children = this._texTransparentBatch.getChildren();
-        for (i in children) {
+        for (var i = 0; i < children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 selChild.update(dt);
         }
 
         children = this._enemyNode.getChildren();
-        for (i in children) {
+        for (var i = 0; i < children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 selChild.update(dt);
@@ -455,7 +455,7 @@ var GameLayer = cc.Layer.extend({
         var locBackSkyRe = this._backSkyRe;
 
         if(locSkyHeight + currPosY <= winSize.height){
-             if(locBackSkyRe != null)
+             if(locBackSkyRe !== null)
                 throw "The memory is leaking at moving background";
             locBackSkyRe = this._backSky;
             this._backSkyRe = this._backSky;

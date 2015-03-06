@@ -49,7 +49,7 @@ var Enemy = ED.FastSprite.extend({
         this._super("#"+arg.textureName);
         //this._super("#"+arg.textureName);
 
-        if (arg.textureName != "E4.png")
+        if (arg.textureName !== "E4.png")
             this.flippedY = true;
         this.setAnchorPoint(0.5, 0.5);
         this.HP = arg.HP;
@@ -58,7 +58,7 @@ var Enemy = ED.FastSprite.extend({
         this.attackMode = arg.attackMode;
         this.enemyType = arg.type;
         this._enemyIndex = arg.index;
-        if (arg.index % 4 == 0)
+        if (arg.index % 4 === 0)
         {
             this.runAction(cc.sequence(cc.delayTime(0.1 + arg.index / 20), cc.callFunc(this.selfDestroy, this)));
         }
@@ -136,7 +136,7 @@ Enemy.destroyTargetNum = function (destroyTotalNum)
     for (var j = 0; j < MW.CONTAINER.ENEMIES.length; j++) {
         selChild = MW.CONTAINER.ENEMIES[j];
 
-        if (selChild.active == true) {
+        if (selChild.active === true) {
             selChild.destroy();
             destroyIndex++;
             if (destroyIndex >= destroyTotalNum)
@@ -154,7 +154,7 @@ Enemy.getOrCreateEnemy = function (arg, index) {
     for (var j = 0; j < MW.CONTAINER.ENEMIES.length; j++) {
         selChild = MW.CONTAINER.ENEMIES[j];
 
-        if (selChild.active == false && selChild.enemyType == arg.type) {
+        if (selChild.active === false && selChild.enemyType === arg.type) {
             selChild.HP = arg.HP;
             selChild.active = true;
             selChild.moveType = arg.moveType;

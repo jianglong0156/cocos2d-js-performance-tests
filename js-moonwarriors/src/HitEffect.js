@@ -56,7 +56,7 @@ HitEffect.getOrCreateHitEffect = function (x, y, rotation, scale) {
     var selChild = null;
     for (var j = 0; j < MW.CONTAINER.HITS.length; j++) {
         selChild = MW.CONTAINER.HITS[j];
-        if (selChild.active == false) {
+        if (selChild.active === false) {
             selChild.visible = true;
             selChild.active = true;
             selChild.reset(x, y, rotation, scale);

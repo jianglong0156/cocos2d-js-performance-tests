@@ -58,7 +58,7 @@ BackSky.getOrCreate = function () {
     var selChild = null;
     for (var j = 0; j < MW.CONTAINER.BACKSKYS.length; j++) {
         selChild = MW.CONTAINER.BACKSKYS[j];
-        if (selChild.active == false) {
+        if (selChild.active === false) {
             selChild.visible = true;
             selChild.active = true;
             return selChild;
@@ -108,7 +108,7 @@ BackTileMap.getOrCreate = function () {
     var selChild = null;
     for (var j = 0; j < MW.CONTAINER.BACKTILEMAPS.length; j++) {
         selChild = MW.CONTAINER.BACKTILEMAPS[j];
-        if (selChild.active == false) {
+        if (selChild.active === false) {
             selChild.visible = true;
             selChild.active = true;
             return selChild;
