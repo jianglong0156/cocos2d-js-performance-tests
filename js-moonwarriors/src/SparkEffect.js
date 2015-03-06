@@ -81,7 +81,7 @@ SparkEffect.getOrCreateSparkEffect = function (x, y) {
     var selChild = null;
     for (var j = 0; j < MW.CONTAINER.SPARKS.length; j++) {
         selChild = MW.CONTAINER.SPARKS[j];
-        if (selChild.active == false) {
+        if (selChild.active === false) {
             selChild.active = true;
             selChild.spark1.setVisible(true);
             selChild.spark2.setVisible(true);

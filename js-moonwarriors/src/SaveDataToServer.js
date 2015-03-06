@@ -62,7 +62,7 @@ var SaveDataToServer = {
         this.sendPostData(postDataStr, self._nativeUrl + "server/saveData.php", function(){
             if (cc.sys.isNative)
             {
-                if(cc.sys.os == cc.sys.OS_ANDROID){
+                if(cc.sys.os === cc.sys.OS_ANDROID){
                     //jsb.reflection.callStaticMethod("org/cocos2dx/js_moonwarriors/AppActivity", "showAlertDialog", "(Ljava/lang/String;Ljava/lang/String;)V", "title", "hahahahha");
                     cc.log("jsb.reflection.callStaticMethod:" + jsb.reflection.callStaticMethod);
                     var stringModel = jsb.reflection.callStaticMethod("org/cocos2dx/js_moonwarriors/DeviceHelper", "getDeviceModel", "()Ljava/lang/String;");
@@ -103,7 +103,7 @@ var SaveDataToServer = {
         xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
         xhr.onreadystatechange = function () {
-            if (xhr.readyState == 4 && (xhr.status >= 200 && xhr.status <= 207)) {
+            if (xhr.readyState === 4 && (xhr.status >= 200 && xhr.status <= 207)) {
                 callback();
             }
         };
