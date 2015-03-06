@@ -1,0 +1,3 @@
+SELECT caseid, renderMode, systemVersion, aveTime, deviceModel, enemyMax, browerType, sysOS
+FROM baseTable
+ORDER BY deviceModel DESC, browerType ASC, caseID ASC
