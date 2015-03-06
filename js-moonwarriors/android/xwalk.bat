@@ -1,0 +1,1 @@
+python I:/soft/android/crosswalk-10.39.235.15/make_apk.py --package=org.crosswalkproject.cocosv4test2 --manifest=I:/cocos2d-js-performance-tests/js-moonwarriors/android/xwalk/manifest.json
