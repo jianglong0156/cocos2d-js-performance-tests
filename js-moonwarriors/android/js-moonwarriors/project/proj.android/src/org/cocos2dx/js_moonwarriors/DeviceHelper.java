@@ -1,4 +1,4 @@
-package org.cocos2dx.js_moonwarriorstest2;
+package org.cocos2dx.js_moonwarriors;
 
 public class DeviceHelper {
 	public static String getDeviceModel() {
