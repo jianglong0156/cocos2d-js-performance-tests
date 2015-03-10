@@ -79,9 +79,40 @@
 cc.game.onStart = function(){
     cc.view.adjustViewPort(true);
     cc.view.enableRetina(false);
-    cc.view.setDesignResolutionSize(480,720,cc.ResolutionPolicy.SHOW_ALL);
+    //
     cc.view.resizeWithBrowserSize(true);
-    cc.director.setProjection(cc.Director.PROJECTION_2D);
+    //cc.director.setProjection(cc.Director.PROJECTION_2D);
+    var originWidth = 480;
+    var originHeight = 720;
+
+    var resizeCallBack = function (){
+        var windowWidth = window.innerWidth;
+        var windowHeight = window.innerHeight;
+        var heightRatio = windowHeight / originHeight;
+
+        canvasHeight = windowHeight;
+        canvasWidth = originWidth * heightRatio;
+        marginLeft = Math.abs(windowWidth - canvasWidth) / 2;
+        var canvasObj = document.getElementById("gameCanvas");
+        canvasObj.style.width = canvasWidth + "px";
+        canvasObj.style.height = canvasHeight + "px";
+        var containerObj = document.getElementById("Cocos2dGameContainer");
+        containerObj.style.width = canvasWidth + "px";
+        containerObj.style.height = canvasHeight + "px";
+    }
+
+    resizeCallBack();
+
+    if (!cc.sys.isNative)
+    {
+        cc.view.setResizeCallback(function(){
+            resizeCallBack();
+        });
+    }
+    else
+    {
+        cc.view.setDesignResolutionSize(originWidth,originHeight,cc.ResolutionPolicy.SHOW_ALL);
+    }
 
     if (cc.sys.isNative) {
         var searchPaths = jsb.fileUtils.getSearchPaths();
