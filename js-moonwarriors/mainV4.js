@@ -106,7 +106,7 @@ window.addEventListener("DOMContentLoaded", function() {
         designWidth = originWidth * heightRatio;
     }
 
-    if (cc.sys.isNative)
+    if (cc.sys.isCrosswalk)
     {
         modifyDesignResolution();
     }
