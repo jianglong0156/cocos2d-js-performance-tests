@@ -123,14 +123,52 @@ MW.BULLET_SPEED = {
 // the counter of active enemies
 MW.ACTIVE_ENEMIES = 0;
 
-MW.LOGOY = 350;
-MW.FLAREY = 445;
-MW.SCALE = 1.5;
-MW.WIDTH = 480;
-MW.HEIGHT = 720;
+MW.DEVICEPIXELRATIO = 1;
+if (window && window.devicePixelRatio)
+{
+    MW.DEVICEPIXELRATIO = window.devicePixelRatio
+}
+
+MW.SCALE_RATIO = 1;
+
+(function()
+{
+    var designWidth = 480, designHeight = 720;
+    var modifyDesignResolution = function ()
+    {
+        var windowWidth = document.documentElement.clientWidth * MW.DEVICEPIXELRATIO;
+        var windowHeight = document.documentElement.clientHeight * MW.DEVICEPIXELRATIO;
+        var widthRatio = windowWidth / designWidth;
+        var heightRatio = windowHeight / designHeight;
+        if (widthRatio > heightRatio)
+        {
+            designHeight = windowHeight;
+            designWidth = designWidth * heightRatio;
+            MW.SCALE_RATIO = heightRatio;
+        }
+        else
+        {
+            designWidth = windowWidth;
+            designHeight = designHeight * widthRatio;
+            MW.SCALE_RATIO = widthRatio;
+        }
+
+    }
+
+    if (cc.sys.isCrosswalk && ED.version == EDV4)
+    {
+        modifyDesignResolution();
+    }
+})();
+
+MW.LOGOY = 350 * MW.SCALE_RATIO;
+MW.FLAREY = 445 * MW.SCALE_RATIO;
+MW.SCALE = 1.5 * MW.SCALE_RATIO;
+MW.WIDTH = 480 * MW.SCALE_RATIO;
+MW.HEIGHT = 720 * MW.SCALE_RATIO;
 MW.FONTCOLOR = "#1f2d96";
 MW.menuHeight = 36;
 MW.menuWidth = 123;
 
 MW.calcStartTime = 10;
-MW.calcTimeOfDuration = 15;
+MW.calcTimeOfDuration = 300;

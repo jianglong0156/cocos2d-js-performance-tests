@@ -99,15 +99,15 @@ var GameLayer = cc.Layer.extend({
         winSize = cc.director.getWinSize();
         this._levelManager = new LevelManager(this);
 
-        this.screenRect = cc.rect(0, 0, winSize.width, winSize.height + 10);
+        this.screenRect = cc.rect(0, 0, winSize.width, winSize.height + 10*MW.SCALE_RATIO);
 
         // ship life
         var life = new cc.Sprite("res/ship03.png");
         life.setAnchorPoint(0.5, 0.5);
         life.attr({
-            scale: 0.6,
-            x: 30,
-            y: MW.HEIGHT - 30
+            scale: 0.6 * MW.SCALE_RATIO,
+            x: 30 * MW.SCALE_RATIO,
+            y: MW.HEIGHT - 30 * MW.SCALE_RATIO
         });
         this._texTransparentBatch.addChild(life, 1, 5);
 
@@ -176,7 +176,6 @@ var GameLayer = cc.Layer.extend({
 	        curPos = null;
         }
     },
-
     addDataInArr:function (dt)
     {
         var nodeNum = 0;
@@ -272,6 +271,7 @@ var GameLayer = cc.Layer.extend({
             selChild.setVisible(false);
         }
         this._hideAllFlag = true;
+        this._nodeNumLabel.setString("Test over! Input your Devices");
     },
     checkIsCollide:function () {
         return;
@@ -311,28 +311,28 @@ var GameLayer = cc.Layer.extend({
     },
     removeInactiveUnit:function (dt) {
         var i, selChild, children = this._texOpaqueBatch.getChildren();
-        for (var i = 0; i< children.length; i++) {
+        for (var i = 0; i < children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 selChild.update(dt);
         }
 
         children = this._sparkBatch.getChildren();
-        for (var i = 0; i< children.length; i++) {
+        for (var i = 0; i < children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 selChild.update(dt);
         }
 
         children = this._texTransparentBatch.getChildren();
-        for (var i = 0; i< children.length; i++) {
+        for (var i = 0; i < children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 selChild.update(dt);
         }
 
         children = this._enemyNode.getChildren();
-        for (var i = 0; i< children.length; i++) {
+        for (var i = 0; i < children.length; i++) {
             selChild = children[i];
             if (selChild && selChild.active)
                 selChild.update(dt);
@@ -369,7 +369,7 @@ var GameLayer = cc.Layer.extend({
     },
     initBackground:function () {
         this._backSky = BackSky.getOrCreate();
-        this._backSkyHeight = this._backSky.height;
+        this._backSkyHeight = this._backSky.height * MW.SCALE_RATIO;
 
         this.moveTileMap();
         ED.schedule(this, this.moveTileMap, 5);
@@ -377,9 +377,9 @@ var GameLayer = cc.Layer.extend({
     moveTileMap:function () {
         var backTileMap = BackTileMap.getOrCreate();
         var ran = 0.5;
-        backTileMap.x = ran * 320;
+        backTileMap.x = ran * 320 * MW.SCALE_RATIO;
 	    backTileMap.y = winSize.height;
-        var move = cc.moveBy(ran * 2 + 10, cc.p(0, -winSize.height-backTileMap.height));
+        var move = cc.moveBy(ran * 2 + 10 * MW.SCALE_RATIO, cc.p(0, -winSize.height-backTileMap.height));
         var fun = cc.callFunc(function(){
             backTileMap.destroy();
         },this);
@@ -387,7 +387,7 @@ var GameLayer = cc.Layer.extend({
     },
 
     _movingBackground:function(dt){
-        var movingDist = 16 * dt;       // background's moving rate is 16 pixel per second
+        var movingDist = 16 * MW.SCALE_RATIO * dt;       // background's moving rate is 16 pixel per second
 
         var locSkyHeight = this._backSkyHeight, locBackSky = this._backSky;
         var currPosY = locBackSky.y - movingDist;
@@ -402,7 +402,7 @@ var GameLayer = cc.Layer.extend({
             //create a new background
             this._backSky = BackSky.getOrCreate();
             locBackSky = this._backSky;
-            locBackSky.y = currPosY + locSkyHeight - 5;
+            locBackSky.y = currPosY + locSkyHeight - 5 * MW.SCALE_RATIO;
         } else
             locBackSky.y = currPosY;
 

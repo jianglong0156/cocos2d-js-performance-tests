@@ -38,11 +38,12 @@ var Explosion = ED.FastSprite.extend({
     ctor:function () {
         var pFrame = cc.spriteFrameCache.getSpriteFrame("explosion_01.png");
         this._super(pFrame);
+        this.scale = MW.SCALE_RATIO;
         //CHANGE this.setBlendFunc(cc.SRC_ALPHA, cc.ONE);
         //this.setCompositeOperation( cc.render.CompositeOperation.lighter );
 
-        this.tmpWidth = this.width;
-        this.tmpHeight = this.height;
+        this.tmpWidth = this.width * MW.SCALE_RATIO;
+        this.tmpHeight = this.height * MW.SCALE_RATIO;
         this.animation = cc.animationCache.getAnimation("Explosion");
     },
     play:function(){

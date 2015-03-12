@@ -101,10 +101,9 @@ cc.game.onStart = function(){
         containerObj.style.height = canvasHeight + "px";
     }
 
-    resizeCallBack();
-
     if (!cc.sys.isNative)
     {
+        resizeCallBack();
         cc.view.setResizeCallback(function(){
             resizeCallBack();
         });

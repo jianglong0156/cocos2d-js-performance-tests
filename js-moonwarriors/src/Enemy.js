@@ -47,6 +47,7 @@ var Enemy = ED.FastSprite.extend({
     _enemyIndex:0,
     ctor:function (arg) {
         this._super("#"+arg.textureName);
+        this.scale = MW.SCALE_RATIO;
         //this._super("#"+arg.textureName);
 
         if (arg.textureName !== "E4.png")

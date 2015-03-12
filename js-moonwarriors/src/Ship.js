@@ -41,12 +41,13 @@ var Ship = cc.Sprite.extend({
     isThrowingBomb:false,
     zOrder:3000,
     maxBulletPowerValue:4,
-    appearPosition:cc.p(160, 60),
+    appearPosition:cc.p(160 * MW.SCALE_RATIO, 60 * MW.SCALE_RATIO),
     _hurtColorLife:0,
     active:true,
     bornSprite:null,
     ctor:function () {
         this._super(res.ship01);
+
         this.tag = this.zOrder;
         this.setAnchorPoint(0.5, 0.5);
         this.x = this.appearPosition.x;
@@ -86,14 +87,14 @@ var Ship = cc.Sprite.extend({
         }
     },
     shoot:function () {
-        var offset = 27;
+        var offset = 27 * MW.SCALE_RATIO;
         var a = Bullet.getOrCreateBullet(this.bulletSpeed, "W1.png", MW.ENEMY_ATTACK_MODE.NORMAL, 3000, MW.UNIT_TAG.PLAYER_BULLET);
         a.x = this.x + offset;
-	    a.y = this.y + 3 + this.height * 0.3;
+	    a.y = this.y + 3 * MW.SCALE_RATIO + this.height * 0.3 * MW.SCALE_RATIO;
 
         var b = Bullet.getOrCreateBullet(this.bulletSpeed, "W1.png", MW.ENEMY_ATTACK_MODE.NORMAL, 3000, MW.UNIT_TAG.PLAYER_BULLET);
         b.x = this.x - offset;
-	    b.y = this.y + 3 + this.height * 0.3;
+	    b.y = this.y + 3 * MW.SCALE_RATIO + this.height * 0.3 * MW.SCALE_RATIO;
     },
     destroy:function () {
         MW.LIFE--;
@@ -110,15 +111,15 @@ var Ship = cc.Sprite.extend({
         }
     },
     collideRect:function (x, y) {
-        var w = this.width, h = this.height;
+        var w = this.width * MW.SCALE_RATIO, h = this.height * MW.SCALE_RATIO;
         return cc.rect(x - w / 2, y - h / 2, w, h / 2);
     },
     initBornSprite:function () {
         this.bornSprite = new cc.Sprite(res.ship03);
         this.bornSprite.setAnchorPoint(0.5, 0.5);
         //this.bornSprite.setBlendFunc(cc.SRC_ALPHA, cc.ONE);
-        this.bornSprite.x = this.width / 2;
-	    this.bornSprite.y = this.height / 2;
+        this.bornSprite.x = this.width * MW.SCALE_RATIO / 2;
+	    this.bornSprite.y = this.height * MW.SCALE_RATIO / 2;
         this.bornSprite.visible = false;
         this.addChild(this.bornSprite, 3000, 99999);
     },
@@ -126,19 +127,21 @@ var Ship = cc.Sprite.extend({
         //revive effect
         this.canBeAttack = false;
 
-        this.scale = 8;
+        this.scale = 8 * MW.SCALE_RATIO;
 
         //this.bornSprite.scale = 8;
         //this.bornSprite.runAction(cc.scaleTo(0.5, 1, 1));
         //this.bornSprite.visible = true;
         var blinks = cc.blink(3, 9);
+        var self = this;
         var makeBeAttack = cc.callFunc(function (t) {
             t.canBeAttack = true;
             t.visible = true;
+            self.scale = MW.SCALE_RATIO;
             //t.bornSprite.visible = false;
         }.bind(this));
         //this.runAction(cc.sequence(cc.delayTime(0.5), blinks, makeBeAttack));
-        this.runAction(cc.sequence(cc.scaleTo(0.5, 1, 1), cc.delayTime(0.5), blinks, makeBeAttack));
+        this.runAction(cc.sequence(cc.scaleTo(0.5, 1 * MW.SCALE_RATIO, 1 * MW.SCALE_RATIO), cc.delayTime(0.5), blinks, makeBeAttack));
         this.HP = 5;
         this._hurtColorLife = 0;
         this.active = true;
