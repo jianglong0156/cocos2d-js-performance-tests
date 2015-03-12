@@ -379,7 +379,7 @@ var GameLayer = cc.Layer.extend({
         var ran = 0.5;
         backTileMap.x = ran * 320 * MW.SCALE_RATIO;
 	    backTileMap.y = winSize.height;
-        var move = cc.moveBy(ran * 2 + 10 * MW.SCALE_RATIO, cc.p(0, -winSize.height-backTileMap.height));
+        var move = cc.moveBy(ran * 2 + 10, cc.p(0, -winSize.height-backTileMap.height));
         var fun = cc.callFunc(function(){
             backTileMap.destroy();
         },this);

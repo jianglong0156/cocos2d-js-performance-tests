@@ -45,7 +45,7 @@ var Bullet = cc.Sprite.extend({
         this._super("res/" + weaponType);
         this.setAnchorPoint(0.5, 0.5);
         this.scale = MW.SCALE_RATIO;
-        this.yVelocity = -bulletSpeed;
+        this.yVelocity = -bulletSpeed * MW.SCALE_RATIO;
         this.attackMode = attackMode;
         //this.setBlendFunc(cc.SRC_ALPHA, cc.ONE);
     },
