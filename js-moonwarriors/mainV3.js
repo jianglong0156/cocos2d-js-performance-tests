@@ -78,7 +78,7 @@
 
 cc.game.onStart = function(){
     cc.view.adjustViewPort(true);
-    cc.view.enableRetina(false);
+    cc.view.enableRetina(true);
     //
     cc.view.resizeWithBrowserSize(true);
     //cc.director.setProjection(cc.Director.PROJECTION_2D);
@@ -101,17 +101,18 @@ cc.game.onStart = function(){
         containerObj.style.height = canvasHeight + "px";
     }
 
-    resizeCallBack();
-
     if (!cc.sys.isNative)
     {
+        resizeCallBack();
         cc.view.setResizeCallback(function(){
             resizeCallBack();
         });
+        cc.log("framesize:" + cc.view.getFrameSize().width + " " + cc.view.getFrameSize().height);
     }
     else
     {
         cc.view.setDesignResolutionSize(originWidth,originHeight,cc.ResolutionPolicy.SHOW_ALL);
+        cc.log("framesize:" + cc.view.getFrameSize().width + " " + cc.view.getFrameSize().height);
     }
 
     if (cc.sys.isNative) {

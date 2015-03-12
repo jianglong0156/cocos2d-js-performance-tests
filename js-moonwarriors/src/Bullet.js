@@ -34,7 +34,7 @@
 var Bullet = cc.Sprite.extend({
     active:true,
     xVelocity:0,
-    yVelocity:200,
+    yVelocity:200 * MW.SCALE_RATIO,
     power:1,
     HP:1,
     moveType:null,
@@ -44,7 +44,8 @@ var Bullet = cc.Sprite.extend({
     ctor:function (bulletSpeed, weaponType, attackMode) {
         this._super("res/" + weaponType);
         this.setAnchorPoint(0.5, 0.5);
-        this.yVelocity = -bulletSpeed;
+        this.scale = MW.SCALE_RATIO;
+        this.yVelocity = -bulletSpeed * MW.SCALE_RATIO;
         this.attackMode = attackMode;
         //this.setBlendFunc(cc.SRC_ALPHA, cc.ONE);
     },
@@ -52,12 +53,13 @@ var Bullet = cc.Sprite.extend({
         var x = this.x, y = this.y;
         this.x = x - this.xVelocity * dt;
 	    this.y = y - this.yVelocity * dt;
+
         if (x < 0 || x > g_sharedGameLayer.screenRect.width || y < 0 || y > g_sharedGameLayer.screenRect.height || this.HP <= 0) {
             this.destroy();
         }
     },
     destroy:function () {
-        var explode = HitEffect.getOrCreateHitEffect(this.x, this.y, 0.5 * 360, 0.75);
+        var explode = HitEffect.getOrCreateHitEffect(this.x, this.y, 0.5 * 360, 0.75 * MW.SCALE_RATIO);
         this.active = false;
         this.visible = false;
     },
@@ -65,7 +67,7 @@ var Bullet = cc.Sprite.extend({
         this.HP--;
     },
     collideRect:function (x, y) {
-        return cc.rect(x - 3, y - 3, 6, 6);
+        return cc.rect(x - 3 * MW.SCALE_RATIO, y - 3*MW.SCALE_RATIO, 6*MW.SCALE_RATIO, 6*MW.SCALE_RATIO);
     }
 });
 

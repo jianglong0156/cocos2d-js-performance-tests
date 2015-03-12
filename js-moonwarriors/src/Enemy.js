@@ -47,6 +47,7 @@ var Enemy = ED.FastSprite.extend({
     _enemyIndex:0,
     ctor:function (arg) {
         this._super("#"+arg.textureName);
+        this.scale = MW.SCALE_RATIO;
         //this._super("#"+arg.textureName);
 
         if (arg.textureName !== "E4.png")
@@ -122,8 +123,8 @@ var Enemy = ED.FastSprite.extend({
         this.HP--;
     },
     collideRect:function (x, y) {
-        var w = this.width, h = this.height;
-        return cc.rect(x - w / 2, y - h / 4, w, h / 2+20);
+        var w = this.width * MW.SCALE_RATIO, h = this.height * MW.SCALE_RATIO;
+        return cc.rect(x - w / 2, y - h / 4, w, h / 2+20 * MW.SCALE_RATIO);
     }
 });
 

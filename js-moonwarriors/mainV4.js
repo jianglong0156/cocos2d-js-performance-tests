@@ -83,38 +83,10 @@ window.addEventListener("DOMContentLoaded", function() {
     cc.node.DEFAULT_ANCHOR_TRANSFORMATION=  new cc.math.Vector(0.5,0.5);
     var gameObj = ED.gameObj = new cc.game.Game();
 
-    var designWidth = 480, designHeight = 720;
-    var modifyDesignResolution = function ()
-    {
-        var windowWidth = window.innerWidth;
-        var windowHeight = window.innerHeight;
-        var widthRatio = windowWidth / originWidth;
-        var heightRatio = windowHeight / originHeight;
-        var originWidth = 480;
-        var originHeight = 720;
-        if (widthRatio > heightRatio)
-        {
-            designHeight = windowHeight;
-            designWidth = originWidth * heightRatio;
-        }
-        else
-        {
-            designWidth = windowWidth;
-            designHeight = originHeight * widthRatio;
-        }
-        designHeight = windowHeight;
-        designWidth = originWidth * heightRatio;
-    }
-
-    if (cc.sys.isCrosswalk)
-    {
-        modifyDesignResolution();
-    }
-
     // adjustViewport(true).    --> developer decision to add it to the html document. why force ?
     gameObj.setDesignResolutionSize({
-            width: designHeight,
-            height: designWidth,
+            width: MW.WIDTH,
+            height: MW.HEIGHT,
             scaleStrategy: "scale_aspect",
             canvasPosition: "center",
             canvasElement: "gameCanvas",

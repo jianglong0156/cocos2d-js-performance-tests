@@ -93,8 +93,8 @@ var LevelManager = cc.Class.extend({
         //addEnemy.x = 80 + (winSize.width - 160) * 0.5;
 	    //addEnemy.y = winSize.height;
         this._createYIndex++;
-        addEnemy.x = 80;
-        addEnemy.y = winSize.height - this._createYIndex * 10;
+        addEnemy.x = 80 * MW.SCALE_RATIO;
+        addEnemy.y = winSize.height - this._createYIndex * 10 * MW.SCALE_RATIO;
         if (this._createYIndex > 60)
         {
             this._createYIndex = 0;
@@ -114,12 +114,12 @@ var LevelManager = cc.Class.extend({
 //                break;
             //case MW.ENEMY_MOVE_TYPE.HORIZONTAL:
             default :
-                offset = cc.p(0, -100 - 200 * 0.5);
+                offset = cc.p(0, (-100 - 200 * 0.5) * MW.SCALE_RATIO);
                 a0 = cc.moveBy(0.5, offset);
-                a1 = cc.moveBy(1, cc.p(-50 - 100 * 0.5, 0));
+                a1 = cc.moveBy(1, cc.p((-50 - 100 * 0.5) * MW.SCALE_RATIO, 0));
                 var onComplete = cc.callFunc(function (pSender) {
                     var a2 = cc.delayTime(1);
-                    var a3 = cc.moveBy(3.3, cc.p(winSize.width - 100, 0));
+                    var a3 = cc.moveBy(3.3, cc.p(winSize.width - 100*MW.SCALE_RATIO, 0));
                     pSender.runAction(cc.repeatForever(cc.sequence(a2, a3, a2.clone(), a3.reverse())));
                 }.bind(addEnemy) );
                 //tmpAction = cc.sequence(a0, a1, onComplete);

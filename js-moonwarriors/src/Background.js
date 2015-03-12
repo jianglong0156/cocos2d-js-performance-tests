@@ -34,6 +34,7 @@ var BackSky = cc.Sprite.extend({
     active:true,
     ctor:function () {
         this._super("res/bg01.png");
+        this.scale = MW.SCALE_RATIO;
         //var rect = cc.rect(0, 1, this.width, this.height-2);
         //this.setTextureRect(rect);
         this.setAnchorPoint(0, 0);
@@ -46,6 +47,7 @@ var BackSky = cc.Sprite.extend({
 
 BackSky.create = function () {
     var testOverBack = new cc.Sprite(res.overBg);
+    testOverBack.scale = MW.SCALE_RATIO;
     testOverBack.setAnchorPoint(0, 0);
     g_sharedGameLayer.addChild(testOverBack, -20);
     var background = new BackSky();
@@ -90,6 +92,7 @@ var BackTileMap = cc.Sprite.extend({
     ctor:function (frameName) {
         this._super("res/"+frameName);
         this.setAnchorPoint(0.5, 0);
+        this.scale = MW.SCALE_RATIO;
     },
     destroy:function () {
         this.visible = false;

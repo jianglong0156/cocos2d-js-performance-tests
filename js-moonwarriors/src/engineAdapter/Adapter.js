@@ -355,7 +355,7 @@ if (!cc.sys)
      * @type {Boolean}
      */
     sys.isNative = false;
-    sys.isCrosswalk = false;
+    sys.isCrosswalk = true;
 
     var browserSupportWebGL = [sys.BROWSER_TYPE_BAIDU, sys.BROWSER_TYPE_OPERA, sys.BROWSER_TYPE_FIREFOX, sys.BROWSER_TYPE_CHROME, sys.BROWSER_TYPE_SAFARI];
     var osSupportWebGL = [sys.OS_IOS, sys.OS_WINDOWS, sys.OS_OSX, sys.OS_LINUX];
