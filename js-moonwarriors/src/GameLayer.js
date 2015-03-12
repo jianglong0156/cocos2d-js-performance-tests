@@ -274,6 +274,7 @@ var GameLayer = cc.Layer.extend({
         this._hideAllFlag = true;
     },
     checkIsCollide:function () {
+        return;
         var selChild, bulletChild;
         // check collide
         var i, locShip =this._ship, enemies = MW.CONTAINER.ENEMIES, playerBullets = MW.CONTAINER.PLAYER_BULLETS;

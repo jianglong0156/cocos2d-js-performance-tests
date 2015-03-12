@@ -113,8 +113,8 @@ window.addEventListener("DOMContentLoaded", function() {
 
     // adjustViewport(true).    --> developer decision to add it to the html document. why force ?
     gameObj.setDesignResolutionSize({
-            width: designHeight,
-            height: designWidth,
+            width: designWidth,
+            height: designHeight,
             scaleStrategy: "scale_aspect",
             canvasPosition: "center",
             canvasElement: "gameCanvas",
