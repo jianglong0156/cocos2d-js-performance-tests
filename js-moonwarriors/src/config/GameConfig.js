@@ -138,6 +138,7 @@ MW.SCALE_RATIO = 1;
     {
         var windowWidth = document.documentElement.clientWidth * MW.DEVICEPIXELRATIO;
         var windowHeight = document.documentElement.clientHeight * MW.DEVICEPIXELRATIO;
+        console.log("window size:" + windowWidth + " " + windowHeight);
         var widthRatio = windowWidth / designWidth;
         var heightRatio = windowHeight / designHeight;
         if (widthRatio > heightRatio)
